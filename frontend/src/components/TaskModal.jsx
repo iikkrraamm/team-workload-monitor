@@ -3,30 +3,31 @@ import Modal from "./ui/Modal";
 import Button from "./ui/Button";
 import { Field, Input, Select, Textarea } from "./ui/Field";
 
-export default function TaskModal({ task, members, onClose, onSave, onDelete }) {
-  const [form, setForm] = useState(
-    task || {
-      title: "",
-      description: "",
-      assignee_id: members[0]?.id || "",
-      priority: "medium",
-      estimated_hours: 4,
-      status: "todo",
-      start_date: new Date().toISOString().slice(0, 10),
-      due_date: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
-    }
-  );
+const FALLBACK_DEFAULTS = {
+  title: "",
+  description: "",
+  assignee_id: "",
+  priority: "medium",
+  estimated_hours: 4,
+  status: "todo",
+  start_date: new Date().toISOString().slice(0, 10),
+  due_date: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
+};
+
+export default function TaskModal({ initial, members, onClose, onSave, onDelete }) {
+  const [form, setForm] = useState(initial || FALLBACK_DEFAULTS);
+  const isEdit = Boolean(initial?.id);
 
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   return (
     <Modal
-      title={task ? "Edit Tugas" : "Tugas Baru"}
+      title={isEdit ? "Edit Tugas" : "Tugas Baru"}
       onClose={onClose}
       footer={
         <>
-          {task && (
-            <Button variant="danger" onClick={() => onDelete(task.id)} className="mr-auto">
+          {isEdit && (
+            <Button variant="danger" onClick={() => onDelete(form.id)} className="mr-auto">
               Hapus
             </Button>
           )}

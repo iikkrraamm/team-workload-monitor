@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { api } from "../lib/api";
+import { formatDateInput } from "../lib/dateUtils";
 import Card from "../components/ui/Card";
 import PageHeader from "../components/ui/PageHeader";
 import Button from "../components/ui/Button";
@@ -22,8 +23,7 @@ export default function TasksPage({ members, refreshSignal }) {
   const [filterQ, setFilterQ] = useState("");
   const [filterDueBefore, setFilterDueBefore] = useState("");
   const [filterDueAfter, setFilterDueAfter] = useState("");
-  const [editing, setEditing] = useState(null);
-  const [showNew, setShowNew] = useState(false);
+  const [formTask, setFormTask] = useState(null);
   const [quickTitle, setQuickTitle] = useState("");
 
   const load = useCallback(() => {
@@ -42,9 +42,35 @@ export default function TasksPage({ members, refreshSignal }) {
 
   const memberById = Object.fromEntries(members.map((m) => [m.id, m]));
 
+  const buildDefaultDraft = () => ({
+    title: "",
+    description: "",
+    assignee_id: filterAssignee || members[0]?.id || "",
+    priority: filterPriority || "medium",
+    estimated_hours: 4,
+    status: "todo",
+    start_date: filterDueAfter || formatDateInput(new Date()),
+    due_date: filterDueBefore || formatDateInput(new Date(Date.now() + 3 * 86400000)),
+  });
+
+  const openNew = () => setFormTask(buildDefaultDraft());
+
+  const openCopy = (task) =>
+    setFormTask({
+      ...task,
+      id: undefined,
+      title: `${task.title} (Copy)`,
+      status: "todo",
+    });
+
   const quickAdd = async () => {
     if (!quickTitle.trim()) return;
-    await api.createTask({ title: quickTitle.trim(), priority: "medium", estimated_hours: 3 });
+    await api.createTask({
+      title: quickTitle.trim(),
+      priority: filterPriority || "medium",
+      assignee_id: filterAssignee || undefined,
+      estimated_hours: 3,
+    });
     setQuickTitle("");
     load();
   };
@@ -52,14 +78,13 @@ export default function TasksPage({ members, refreshSignal }) {
   const handleSave = async (form) => {
     if (form.id) await api.updateTask(form.id, form);
     else await api.createTask(form);
-    setEditing(null);
-    setShowNew(false);
+    setFormTask(null);
     load();
   };
 
   const handleDelete = async (id) => {
     await api.deleteTask(id);
-    setEditing(null);
+    setFormTask(null);
     load();
   };
 
@@ -82,7 +107,7 @@ export default function TasksPage({ members, refreshSignal }) {
         title="Tugas Tim"
         subtitle="Kelola tugas dengan cepat — geser status, atau pakai chat AI untuk input super cepat."
         action={
-          <Button variant="primary" onClick={() => setShowNew(true)}>
+          <Button variant="primary" onClick={openNew}>
             <Plus size={16} /> Tugas Baru
           </Button>
         }
@@ -162,8 +187,9 @@ export default function TasksPage({ members, refreshSignal }) {
                   assignee={memberById[t.assignee_id]}
                   columns={COLUMNS}
                   currentStatus={col.key}
-                  onOpen={() => setEditing(t)}
+                  onOpen={() => setFormTask(t)}
                   onMove={(newStatus) => moveTask(t, newStatus)}
+                  onCopy={openCopy}
                 />
               ))}
               {colTasks.length === 0 && <EmptyState>Tidak ada tugas</EmptyState>}
@@ -172,14 +198,11 @@ export default function TasksPage({ members, refreshSignal }) {
         })}
       </div>
 
-      {(editing || showNew) && (
+      {formTask && (
         <TaskModal
-          task={editing}
+          initial={formTask}
           members={members}
-          onClose={() => {
-            setEditing(null);
-            setShowNew(false);
-          }}
+          onClose={() => setFormTask(null)}
           onSave={handleSave}
           onDelete={handleDelete}
         />

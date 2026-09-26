@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { Copy } from "lucide-react";
 import { initials } from "./ui/Avatar";
 import { PriorityBadge } from "./ui/Badge";
 
@@ -14,7 +15,7 @@ const RISK_LABEL = {
   tidak_cukup: "Tidak cukup",
 };
 
-export default function TaskCard({ task, assignee, columns, currentStatus, onOpen, onMove }) {
+export default function TaskCard({ task, assignee, columns, currentStatus, onOpen, onMove, onCopy }) {
   const t = task;
   return (
     <div
@@ -80,7 +81,7 @@ export default function TaskCard({ task, assignee, columns, currentStatus, onOpe
         </div>
       )}
 
-      <div className="mt-3 flex flex-wrap gap-1.5 border-t border-line pt-2.5">
+      <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-line pt-2.5">
         {columns
           .filter((c) => c.key !== currentStatus)
           .map((c) => (
@@ -95,6 +96,16 @@ export default function TaskCard({ task, assignee, columns, currentStatus, onOpe
               → {c.label}
             </button>
           ))}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onCopy(task);
+          }}
+          className="ml-auto flex items-center gap-1 rounded-full bg-ink/[0.04] px-2.5 py-1 text-[11.5px] font-medium text-ink-soft hover:bg-ink/[0.08]"
+          title="Salin tugas ini"
+        >
+          <Copy size={12} /> Salin
+        </button>
       </div>
     </div>
   );
