@@ -41,7 +41,11 @@ def count_workdays(start, end):
     return sum(1 for day in daterange(start, end) if day.weekday() < 5)
 
 
-def count_capacity_days(start, end, tasks=()):
+def count_capacity_days(start, end, tasks=(), force_workday=False):
+    if force_workday:
+        # A specific date was explicitly chosen (e.g. a "day" period on a
+        # Sat/Sun) — treat it as a full working day instead of skipping it.
+        return count_days(start, end)
     overtime_dates = set()
     for task in tasks:
         if (task.get("status") or "").lower() == "done":
@@ -143,7 +147,7 @@ def capacity_balance_by_deadline(db, member_id, tasks, start, end, capacity):
     return round(capacity * capacity_days - required_hours - activity_hours, 1)
 
 
-def allocate_tasks_in_window(db, member_id, start, end, exclude_done=False):
+def allocate_tasks_in_window(db, member_id, start, end, exclude_done=False, force_workday=False):
     """Allocate daily capacity to tasks by priority and due date."""
     member = db.execute("SELECT * FROM members WHERE id = ?", (member_id,)).fetchone()
     if not member:
@@ -167,15 +171,16 @@ def allocate_tasks_in_window(db, member_id, start, end, exclude_done=False):
         ).fetchone()
         activity_hours = float(activity["h"] or 0.0) if activity else 0.0
         activities_by_day[day_key] = activity_hours
+        is_weekend = day.weekday() >= 5 and not force_workday
         weekend_due_tasks = [
             task for task in tasks
-            if day.weekday() >= 5
+            if is_weekend
             and (task.get("status") or "").lower() != "done"
             and (task_due := parse_date(task.get("due_date"))) is not None
             and task_due.weekday() >= 5
             and (task_start := parse_date(task.get("start_date")) or start) <= day <= task_due
         ]
-        if day.weekday() >= 5 and not weekend_due_tasks:
+        if is_weekend and not weekend_due_tasks:
             allocations[day_key] = {}
             continue
         available = float(capacity) - activity_hours
@@ -187,7 +192,7 @@ def allocate_tasks_in_window(db, member_id, start, end, exclude_done=False):
         for task in tasks:
             task_start = parse_date(task.get("start_date")) or start
             task_due = parse_date(task.get("due_date")) or end
-            if day.weekday() >= 5 and (
+            if is_weekend and (
                 (task.get("status") or "").lower() == "done"
                 or task_due.weekday() < 5
                 or not (task_start <= day <= task_due)
@@ -273,7 +278,8 @@ def compute_member_workload(db, member, period, ref_date):
         (member["id"],),
     ).fetchall()
     capacity = member["capacity_hours_per_day"] * count_capacity_days(
-        start, end, [task_row_to_dict(task) for task in active_tasks]
+        start, end, [task_row_to_dict(task) for task in active_tasks],
+        force_workday=(period == "day"),
     )
     if capacity:
         raw_percent = (total_hours / capacity) * 100
@@ -308,7 +314,9 @@ def suggest_for_overload(db, member, period, ref_date):
     total_hours = sum(
         compute_daily_load(db, member["id"], day) for day in daterange(start, end)
     )
-    capacity = member["capacity_hours_per_day"] * count_capacity_days(start, end, tasks)
+    capacity = member["capacity_hours_per_day"] * count_capacity_days(
+        start, end, tasks, force_workday=(period == "day")
+    )
     remaining_excess = total_hours - capacity
     if remaining_excess <= 0:
         return []

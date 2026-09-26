@@ -54,7 +54,9 @@ def get_workload_details():
     reference_date = request.args.get("date")
     ref_date = parse_date(reference_date) if reference_date else date_cls.today()
     start, end = period_range(period, ref_date)
-    allocation = allocate_tasks_in_window(db, member_id, start, end)
+    allocation = allocate_tasks_in_window(
+        db, member_id, start, end, force_workday=(period == "day")
+    )
 
     rows = db.execute("SELECT * FROM tasks WHERE assignee_id = ?", (member_id,)).fetchall()
     tasks = []
