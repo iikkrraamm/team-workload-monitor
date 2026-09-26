@@ -97,48 +97,65 @@ export default function DashboardPage() {
           <div className="space-y-4">
             {data.member_cards.map((mc) => (
               <div
-                className="flex flex-col gap-3 border-b border-line pb-4 last:border-0 last:pb-0 sm:flex-row sm:items-center sm:gap-3.5 sm:border-0 sm:pb-0"
                 key={mc.member.id}
+                className="border-b border-line pb-4 last:border-0 last:pb-0 sm:border-0 sm:pb-0"
               >
-                <div className="flex items-center gap-3.5">
+                {/* Mobile layout */}
+                <div className="flex items-start gap-3.5 sm:hidden">
                   <Avatar name={mc.member.name} color={mc.member.color} />
-                  <div className="min-w-0 flex-1 sm:hidden">
-                    <div className="truncate text-[14px] font-medium text-ink">{mc.member.name}</div>
-                    <div className="truncate text-[12.5px] text-ink-faint">{mc.member.role}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="truncate text-[14px] font-medium text-ink">{mc.member.name}</div>
+                        <div className="truncate text-[12.5px] text-ink-faint">{mc.member.role}</div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <div className="text-[14px] font-semibold text-ink">
+                          {mc.today_percent == null ? "—" : `${mc.today_percent}%`}
+                        </div>
+                        <StatusPill status={mc.today_status} />
+                      </div>
+                    </div>
+                    <div className="mt-1.5 truncate text-[12px] text-ink-soft">
+                      <span className="font-medium text-ink">Sedang dikerjakan: </span>
+                      {mc.in_progress_tasks.length
+                        ? mc.in_progress_tasks.join(", ")
+                        : "Tidak ada task aktif hari ini"}
+                    </div>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-ink/[0.06]">
+                      <div
+                        className={`h-full rounded-full ${PROGRESS_COLOR[mc.today_status]}`}
+                        style={{ width: `${Math.min(mc.today_percent ?? 0, 100)}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2 sm:hidden">
+                </div>
+
+                {/* Desktop layout */}
+                <div className="hidden items-center gap-3.5 sm:flex">
+                  <Avatar name={mc.member.name} color={mc.member.color} />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[14px] font-medium text-ink">{mc.member.name}</div>
+                    <div className="text-[12.5px] text-ink-faint">{mc.member.role}</div>
+                    <div className="mt-1 truncate text-[12px] text-ink-soft">
+                      <span className="font-medium text-ink">Sedang dikerjakan: </span>
+                      {mc.in_progress_tasks.length
+                        ? mc.in_progress_tasks.join(", ")
+                        : "Tidak ada task aktif hari ini"}
+                    </div>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-ink/[0.06]">
+                      <div
+                        className={`h-full rounded-full ${PROGRESS_COLOR[mc.today_status]}`}
+                        style={{ width: `${Math.min(mc.today_percent ?? 0, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
                     <div className="text-[14px] font-semibold text-ink">
                       {mc.today_percent == null ? "—" : `${mc.today_percent}%`}
                     </div>
                     <StatusPill status={mc.today_status} />
                   </div>
-                </div>
-
-                <div className="hidden min-w-0 flex-1 sm:block">
-                  <div className="truncate text-[14px] font-medium text-ink">{mc.member.name}</div>
-                  <div className="truncate text-[12.5px] text-ink-faint">{mc.member.role}</div>
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[12px] text-ink-soft">
-                    <span className="font-medium text-ink">Sedang dikerjakan: </span>
-                    {mc.in_progress_tasks.length
-                      ? mc.in_progress_tasks.join(", ")
-                      : "Tidak ada task aktif hari ini"}
-                  </div>
-                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-ink/[0.06]">
-                    <div
-                      className={`h-full rounded-full ${PROGRESS_COLOR[mc.today_status]}`}
-                      style={{ width: `${Math.min(mc.today_percent ?? 0, 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="hidden shrink-0 flex-col items-end gap-1.5 sm:flex">
-                  <div className="text-[14px] font-semibold text-ink">
-                    {mc.today_percent == null ? "—" : `${mc.today_percent}%`}
-                  </div>
-                  <StatusPill status={mc.today_status} />
                 </div>
               </div>
             ))}
