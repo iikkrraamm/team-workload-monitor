@@ -29,9 +29,9 @@ export default function App() {
     <div className="flex min-h-screen bg-canvas">
       <Sidebar page={page} setPage={setPage} />
 
-      <div className="flex min-h-screen flex-1 flex-col">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-x-hidden">
         <MobileTopBar />
-        <main className="flex-1 px-4 py-6 pb-24 md:px-8 md:py-8 md:pb-8">
+        <main className="min-w-0 flex-1 px-4 py-6 pb-24 md:px-8 md:py-8 md:pb-8">
           {page === "dashboard" && <DashboardPage key={refreshSignal} />}
           {page === "tasks" && <TasksPage members={members} refreshSignal={refreshSignal} />}
           {page === "workload" && <WorkloadPage members={members} key={refreshSignal} />}

@@ -49,14 +49,14 @@ export default function DashboardPage() {
         subtitle={`Ringkasan beban kerja hari ini, ${data.reference_date}`}
       />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
         {STATUS_META.map((s) => (
-          <Card key={s.key} className="p-4">
+          <Card key={s.key} className="min-w-0 p-3.5 sm:p-4">
             <StatusPill status={s.key} />
-            <div className="mt-3 text-[28px] font-semibold leading-none text-ink">
+            <div className="mt-2.5 text-[24px] font-semibold leading-none text-ink sm:mt-3 sm:text-[28px]">
               {data.status_counts[s.key] ?? 0}
             </div>
-            <div className="mt-1 text-[12.5px] text-ink-soft">
+            <div className="mt-1 text-[12px] text-ink-soft sm:text-[12.5px]">
               orang berstatus {s.label.toLowerCase()}
             </div>
           </Card>
@@ -82,7 +82,7 @@ export default function DashboardPage() {
                   size={17}
                   className={a.risk === "high" ? "mt-0.5 text-status-overload" : "mt-0.5 text-status-padat"}
                 />
-                <div className="text-[13.5px] leading-relaxed text-ink">
+                <div className="min-w-0 break-words text-[13.5px] leading-relaxed text-ink">
                   <strong className="font-semibold">{a.member_name}</strong> — {a.message}
                 </div>
               </div>
@@ -96,12 +96,31 @@ export default function DashboardPage() {
           <div className="mb-4 text-[15px] font-semibold text-ink">Beban Kerja Hari Ini</div>
           <div className="space-y-4">
             {data.member_cards.map((mc) => (
-              <div className="flex items-center gap-3.5" key={mc.member.id}>
-                <Avatar name={mc.member.name} color={mc.member.color} />
+              <div
+                className="flex flex-col gap-3 border-b border-line pb-4 last:border-0 last:pb-0 sm:flex-row sm:items-center sm:gap-3.5 sm:border-0 sm:pb-0"
+                key={mc.member.id}
+              >
+                <div className="flex items-center gap-3.5">
+                  <Avatar name={mc.member.name} color={mc.member.color} />
+                  <div className="min-w-0 flex-1 sm:hidden">
+                    <div className="truncate text-[14px] font-medium text-ink">{mc.member.name}</div>
+                    <div className="truncate text-[12.5px] text-ink-faint">{mc.member.role}</div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2 sm:hidden">
+                    <div className="text-[14px] font-semibold text-ink">
+                      {mc.today_percent == null ? "—" : `${mc.today_percent}%`}
+                    </div>
+                    <StatusPill status={mc.today_status} />
+                  </div>
+                </div>
+
+                <div className="hidden min-w-0 flex-1 sm:block">
+                  <div className="truncate text-[14px] font-medium text-ink">{mc.member.name}</div>
+                  <div className="truncate text-[12.5px] text-ink-faint">{mc.member.role}</div>
+                </div>
+
                 <div className="min-w-0 flex-1">
-                  <div className="text-[14px] font-medium text-ink">{mc.member.name}</div>
-                  <div className="text-[12.5px] text-ink-faint">{mc.member.role}</div>
-                  <div className="mt-1 truncate text-[12px] text-ink-soft">
+                  <div className="truncate text-[12px] text-ink-soft">
                     <span className="font-medium text-ink">Sedang dikerjakan: </span>
                     {mc.in_progress_tasks.length
                       ? mc.in_progress_tasks.join(", ")
@@ -114,7 +133,8 @@ export default function DashboardPage() {
                     />
                   </div>
                 </div>
-                <div className="flex shrink-0 flex-col items-end gap-1.5">
+
+                <div className="hidden shrink-0 flex-col items-end gap-1.5 sm:flex">
                   <div className="text-[14px] font-semibold text-ink">
                     {mc.today_percent == null ? "—" : `${mc.today_percent}%`}
                   </div>
@@ -127,24 +147,24 @@ export default function DashboardPage() {
 
         <Card className="p-5">
           <div className="mb-4 text-[15px] font-semibold text-ink">Status Tugas</div>
-          <div className="grid grid-cols-3 gap-3">
-            <Card className="border-none bg-ink/[0.03] p-3.5 shadow-none">
-              <div className="text-[22px] font-semibold text-ink">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <Card className="min-w-0 border-none bg-ink/[0.03] p-2.5 shadow-none sm:p-3.5">
+              <div className="text-[18px] font-semibold text-ink sm:text-[22px]">
                 {data.task_status_counts.todo || 0}
               </div>
-              <div className="mt-0.5 text-[12px] text-ink-soft">Belum dikerjakan</div>
+              <div className="mt-0.5 text-[11px] text-ink-soft sm:text-[12px]">Belum dikerjakan</div>
             </Card>
-            <Card className="border-none bg-ink/[0.03] p-3.5 shadow-none">
-              <div className="text-[22px] font-semibold text-ink">
+            <Card className="min-w-0 border-none bg-ink/[0.03] p-2.5 shadow-none sm:p-3.5">
+              <div className="text-[18px] font-semibold text-ink sm:text-[22px]">
                 {data.task_status_counts.in_progress || 0}
               </div>
-              <div className="mt-0.5 text-[12px] text-ink-soft">Dikerjakan</div>
+              <div className="mt-0.5 text-[11px] text-ink-soft sm:text-[12px]">Dikerjakan</div>
             </Card>
-            <Card className="border-none bg-ink/[0.03] p-3.5 shadow-none">
-              <div className="text-[22px] font-semibold text-ink">
+            <Card className="min-w-0 border-none bg-ink/[0.03] p-2.5 shadow-none sm:p-3.5">
+              <div className="text-[18px] font-semibold text-ink sm:text-[22px]">
                 {data.task_status_counts.done || 0}
               </div>
-              <div className="mt-0.5 text-[12px] text-ink-soft">Selesai</div>
+              <div className="mt-0.5 text-[11px] text-ink-soft sm:text-[12px]">Selesai</div>
             </Card>
           </div>
           <div className="mt-4 text-[13px] leading-relaxed text-ink-soft">
