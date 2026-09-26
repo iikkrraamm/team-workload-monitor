@@ -1,0 +1,101 @@
+import clsx from "clsx";
+import { initials } from "./ui/Avatar";
+import { PriorityBadge } from "./ui/Badge";
+
+const RISK_STYLE = {
+  cukup: "bg-status-normal/10 text-[#1a8a3d]",
+  ketat: "bg-status-padat/10 text-[#c9760a]",
+  tidak_cukup: "bg-status-overload/10 text-status-overload",
+};
+
+const RISK_LABEL = {
+  cukup: "Cukup",
+  ketat: "Ketat",
+  tidak_cukup: "Tidak cukup",
+};
+
+export default function TaskCard({ task, assignee, columns, currentStatus, onOpen, onMove }) {
+  const t = task;
+  return (
+    <div
+      onClick={onOpen}
+      className="mb-2.5 cursor-pointer rounded-xl border border-line/70 bg-white p-3.5 transition-shadow hover:shadow-soft"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <PriorityBadge priority={t.priority} />
+          <div className="mt-1.5 text-[14px] font-medium leading-snug text-ink">{t.title}</div>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <div className="text-[11.5px] text-ink-faint">Due {t.due_date}</div>
+          {assignee ? (
+            <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-ink-soft">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent-soft text-[9px] font-semibold text-accent">
+                {initials(assignee.name)}
+              </span>
+              {assignee.name.split(" ")[0]}
+            </div>
+          ) : (
+            <div className="text-[11.5px] text-ink-faint">Belum ditentukan</div>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-2.5 flex items-center justify-between text-[11.5px] text-ink-faint">
+        {t.deadline ? (
+          <>
+            <span>
+              {t.deadline.window_start} → {t.deadline.due_date}
+            </span>
+            <span
+              className={clsx(
+                t.deadline.available_hours < 0 ? "font-semibold text-status-overload" : "text-ink-soft"
+              )}
+            >
+              {t.deadline.available_hours < 0
+                ? `Kekurangan ${Math.abs(t.deadline.available_hours)}h`
+                : `${t.deadline.available_hours}h tersedia`}
+            </span>
+          </>
+        ) : (
+          <span>Tidak ada deadline</span>
+        )}
+      </div>
+
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-ink-soft">
+        <span>
+          Estimasi <strong className="font-semibold text-ink">{t.estimated_hours}h</strong>
+        </span>
+        <span>Sisa hari kerja: {t.deadline?.work_days_remaining ?? "-"}</span>
+        {t.deadline && (
+          <span className={clsx("rounded-full px-2 py-0.5 font-medium", RISK_STYLE[t.deadline.risk])}>
+            {RISK_LABEL[t.deadline.risk] || t.deadline.risk}
+          </span>
+        )}
+      </div>
+
+      {t.deadline?.counted_as_history && (
+        <div className="mt-2 text-[11px] italic text-ink-faint">
+          Dihitung sebagai histori (tugas sudah selesai)
+        </div>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-1.5 border-t border-line pt-2.5">
+        {columns
+          .filter((c) => c.key !== currentStatus)
+          .map((c) => (
+            <button
+              key={c.key}
+              onClick={(e) => {
+                e.stopPropagation();
+                onMove(c.key);
+              }}
+              className="rounded-full bg-ink/[0.04] px-2.5 py-1 text-[11.5px] font-medium text-ink-soft hover:bg-ink/[0.08]"
+            >
+              → {c.label}
+            </button>
+          ))}
+      </div>
+    </div>
+  );
+}
