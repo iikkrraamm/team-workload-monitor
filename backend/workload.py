@@ -66,6 +66,7 @@ def count_capacity_days(start, end, tasks=(), force_workday=False):
 
 
 def task_row_to_dict(row):
+    keys = row.keys()
     return {
         "id": row["id"],
         "title": row["title"],
@@ -74,7 +75,8 @@ def task_row_to_dict(row):
         "priority": row["priority"],
         "estimated_hours": row["estimated_hours"],
         "status": row["status"],
-        "category": row["category"] if "category" in row.keys() else "kerja",
+        "category": row["category"] if "category" in keys else "kerja",
+        "project": row["project"] if "project" in keys else "",
         "start_date": row["start_date"],
         "due_date": row["due_date"],
     }

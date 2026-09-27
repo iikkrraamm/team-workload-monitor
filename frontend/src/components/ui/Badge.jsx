@@ -69,11 +69,15 @@ export function PriorityBadge({ priority }) {
 export const CATEGORY_LABEL = {
   kerja: "Kerja",
   meeting: "Meeting/Diskusi",
+  cuti: "Cuti/Libur",
+  lainnya: "Lainnya",
 };
 
 const CATEGORY_STYLE = {
   kerja: "bg-ink/[0.06] text-ink-soft",
   meeting: "bg-accent/10 text-accent",
+  cuti: "bg-status-padat/10 text-[#c9760a]",
+  lainnya: "bg-status-low/10 text-[#0a7ea8]",
 };
 
 export function CategoryBadge({ category }) {

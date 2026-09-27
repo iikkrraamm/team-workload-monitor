@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { Copy } from "lucide-react";
+import { Copy, Folder } from "lucide-react";
 import { initials } from "./ui/Avatar";
 import { PriorityBadge, CategoryBadge } from "./ui/Badge";
 
@@ -29,6 +29,12 @@ export default function TaskCard({ task, assignee, columns, currentStatus, onOpe
             <CategoryBadge category={t.category} />
           </div>
           <div className="mt-1.5 text-[14px] font-medium leading-snug text-ink">{t.title}</div>
+          {t.project && (
+            <div className="mt-1 flex items-center gap-1 text-[11.5px] text-ink-faint">
+              <Folder size={11} />
+              {t.project}
+            </div>
+          )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <div className="text-[11.5px] text-ink-faint">Due {t.due_date}</div>

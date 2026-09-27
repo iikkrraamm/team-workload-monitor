@@ -21,6 +21,7 @@ export default function TasksPage({ members, refreshSignal }) {
   const [filterAssignee, setFilterAssignee] = useState("");
   const [filterPriority, setFilterPriority] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
+  const [filterProject, setFilterProject] = useState("");
   const [filterQ, setFilterQ] = useState("");
   const [filterDueBefore, setFilterDueBefore] = useState("");
   const [filterDueAfter, setFilterDueAfter] = useState("");
@@ -32,17 +33,19 @@ export default function TasksPage({ members, refreshSignal }) {
     if (filterAssignee) f.assignee_id = filterAssignee;
     if (filterPriority) f.priority = filterPriority;
     if (filterCategory) f.category = filterCategory;
+    if (filterProject) f.project = filterProject;
     if (filterQ) f.q = filterQ;
     if (filterDueBefore) f.due_before = filterDueBefore;
     if (filterDueAfter) f.due_after = filterDueAfter;
     api.getTasks(f).then(setTasks).catch(console.error);
-  }, [filterAssignee, filterPriority, filterCategory, filterQ, filterDueBefore, filterDueAfter]);
+  }, [filterAssignee, filterPriority, filterCategory, filterProject, filterQ, filterDueBefore, filterDueAfter]);
 
   useEffect(() => {
     load();
   }, [load, refreshSignal]);
 
   const memberById = Object.fromEntries(members.map((m) => [m.id, m]));
+  const existingProjects = [...new Set(tasks.map((t) => t.project).filter(Boolean))].sort();
 
   const buildDefaultDraft = () => ({
     title: "",
@@ -50,6 +53,7 @@ export default function TasksPage({ members, refreshSignal }) {
     assignee_id: filterAssignee || members[0]?.id || "",
     priority: filterPriority || "medium",
     category: filterCategory || "kerja",
+    project: filterProject || "",
     estimated_hours: 4,
     status: "todo",
     start_date: filterDueAfter || formatDateInput(new Date()),
@@ -72,6 +76,7 @@ export default function TasksPage({ members, refreshSignal }) {
       title: quickTitle.trim(),
       priority: filterPriority || "medium",
       category: filterCategory || "kerja",
+      project: filterProject || undefined,
       assignee_id: filterAssignee || undefined,
       estimated_hours: 3,
     });
@@ -101,6 +106,7 @@ export default function TasksPage({ members, refreshSignal }) {
     setFilterAssignee("");
     setFilterPriority("");
     setFilterCategory("");
+    setFilterProject("");
     setFilterQ("");
     setFilterDueBefore("");
     setFilterDueAfter("");
@@ -152,7 +158,21 @@ export default function TasksPage({ members, refreshSignal }) {
             <option value="">Semua kategori</option>
             <option value="kerja">Kerja</option>
             <option value="meeting">Meeting/Diskusi</option>
+            <option value="cuti">Cuti/Libur</option>
+            <option value="lainnya">Lainnya</option>
           </Select>
+          <Input
+            list="project-filter-suggestions"
+            placeholder="Filter project..."
+            value={filterProject}
+            onChange={(e) => setFilterProject(e.target.value)}
+            className="w-40"
+          />
+          <datalist id="project-filter-suggestions">
+            {existingProjects.map((p) => (
+              <option key={p} value={p} />
+            ))}
+          </datalist>
           <div className="relative">
             <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
             <Input
@@ -212,6 +232,7 @@ export default function TasksPage({ members, refreshSignal }) {
         <TaskModal
           initial={formTask}
           members={members}
+          existingProjects={existingProjects}
           onClose={() => setFormTask(null)}
           onSave={handleSave}
           onDelete={handleDelete}

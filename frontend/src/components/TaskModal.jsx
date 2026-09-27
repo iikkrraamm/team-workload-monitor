@@ -9,13 +9,14 @@ const FALLBACK_DEFAULTS = {
   assignee_id: "",
   priority: "medium",
   category: "kerja",
+  project: "",
   estimated_hours: 4,
   status: "todo",
   start_date: new Date().toISOString().slice(0, 10),
   due_date: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
 };
 
-export default function TaskModal({ initial, members, onClose, onSave, onDelete }) {
+export default function TaskModal({ initial, members, existingProjects = [], onClose, onSave, onDelete }) {
   const [form, setForm] = useState(initial || FALLBACK_DEFAULTS);
   const isEdit = Boolean(initial?.id);
 
@@ -75,12 +76,29 @@ export default function TaskModal({ initial, members, onClose, onSave, onDelete 
           </Field>
         </div>
 
-        <Field label="Kategori">
-          <Select value={form.category || "kerja"} onChange={(e) => update("category", e.target.value)}>
-            <option value="kerja">Kerja (ada hasil — coding, dokumen, dll)</option>
-            <option value="meeting">Meeting/Diskusi</option>
-          </Select>
-        </Field>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Kategori">
+            <Select value={form.category || "kerja"} onChange={(e) => update("category", e.target.value)}>
+              <option value="kerja">Kerja (ada hasil — coding, dokumen, dll)</option>
+              <option value="meeting">Meeting/Diskusi</option>
+              <option value="cuti">Cuti/Libur</option>
+              <option value="lainnya">Lainnya</option>
+            </Select>
+          </Field>
+          <Field label="Project">
+            <Input
+              list="project-suggestions"
+              value={form.project || ""}
+              onChange={(e) => update("project", e.target.value)}
+              placeholder="mis. Smart Chatbot"
+            />
+            <datalist id="project-suggestions">
+              {existingProjects.map((p) => (
+                <option key={p} value={p} />
+              ))}
+            </datalist>
+          </Field>
+        </div>
 
         <div className="grid grid-cols-2 gap-4">
           <Field label="Estimasi Jam">

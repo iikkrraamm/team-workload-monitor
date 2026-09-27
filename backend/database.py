@@ -45,6 +45,7 @@ def init_db():
             estimated_hours REAL DEFAULT 1,
             status TEXT DEFAULT 'todo',
             category TEXT DEFAULT 'kerja',
+            project TEXT DEFAULT '',
             start_date TEXT NOT NULL,
             due_date TEXT NOT NULL,
             created_at TEXT NOT NULL,
@@ -63,11 +64,14 @@ def init_db():
     )
     conn.commit()
 
-    # Lightweight migration: databases created before the `category` column
-    # existed won't have it from CREATE TABLE IF NOT EXISTS above.
+    # Lightweight migration: databases created before these columns existed
+    # won't have them from CREATE TABLE IF NOT EXISTS above.
     existing_columns = {row[1] for row in conn.execute("PRAGMA table_info(tasks)")}
     if "category" not in existing_columns:
         conn.execute("ALTER TABLE tasks ADD COLUMN category TEXT DEFAULT 'kerja'")
+        conn.commit()
+    if "project" not in existing_columns:
+        conn.execute("ALTER TABLE tasks ADD COLUMN project TEXT DEFAULT ''")
         conn.commit()
 
     cur = conn.execute("SELECT COUNT(*) FROM members")
