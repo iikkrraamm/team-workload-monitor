@@ -5,7 +5,7 @@ import os
 from flask import Flask, send_from_directory
 from flask_cors import CORS
 
-from database import DB_PATH, close_db, init_db
+from database import close_db, init_db
 from routes.tasks import tasks_bp
 from routes.members import members_bp
 from routes.workload import workload_bp
@@ -53,6 +53,11 @@ if __name__ == "__main__":
     init_db()
     app.run(host="0.0.0.0", debug=False, use_reloader=False, threaded=True, port=5000)
 else:
-    # Ensure DB exists when imported by a WSGI server (e.g. PythonAnywhere)
-    if not os.path.exists(DB_PATH):
-        init_db()
+    # Always run on import (e.g. by a WSGI server / PythonAnywhere), not
+    # just the first time the DB file is created. init_db() is additive
+    # and idempotent — CREATE TABLE IF NOT EXISTS plus column migrations
+    # that only ADD missing columns — so re-running it on every reload is
+    # safe and is exactly what makes schema changes (like the 'project'
+    # column) show up automatically on an existing production database
+    # instead of only on a brand-new one.
+    init_db()

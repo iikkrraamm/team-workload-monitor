@@ -64,20 +64,32 @@ def init_db():
     )
     conn.commit()
 
-    # Lightweight migration: databases created before these columns existed
-    # won't have them from CREATE TABLE IF NOT EXISTS above.
-    existing_columns = {row[1] for row in conn.execute("PRAGMA table_info(tasks)")}
-    if "category" not in existing_columns:
-        conn.execute("ALTER TABLE tasks ADD COLUMN category TEXT DEFAULT 'kerja'")
-        conn.commit()
-    if "project" not in existing_columns:
-        conn.execute("ALTER TABLE tasks ADD COLUMN project TEXT DEFAULT ''")
-        conn.commit()
+    run_migrations(conn)
 
     cur = conn.execute("SELECT COUNT(*) FROM members")
     if cur.fetchone()[0] == 0:
         _seed(conn)
     conn.close()
+
+
+# Additive, data-safe schema migrations: (table, column, "ALTER TABLE ...").
+# Runs every time the app starts (see run_migrations below), not just on
+# first-ever creation, so a column added here shows up on every existing
+# deployment automatically — no manual DB surgery, no dropped data. Only
+# ADD COLUMN migrations belong here: never a DROP/RENAME, since those
+# aren't safe to run unconditionally on every startup.
+SCHEMA_MIGRATIONS = [
+    ("tasks", "category", "ALTER TABLE tasks ADD COLUMN category TEXT DEFAULT 'kerja'"),
+    ("tasks", "project", "ALTER TABLE tasks ADD COLUMN project TEXT DEFAULT ''"),
+]
+
+
+def run_migrations(conn):
+    for table, column, alter_sql in SCHEMA_MIGRATIONS:
+        existing_columns = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+        if column not in existing_columns:
+            conn.execute(alter_sql)
+            conn.commit()
 
 
 def _seed(conn):
