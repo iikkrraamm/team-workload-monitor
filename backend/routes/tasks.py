@@ -36,8 +36,8 @@ def list_tasks():
         query += " AND category = ?"
         params.append(request.args["category"])
     if request.args.get("project"):
-        query += " AND project = ?"
-        params.append(request.args["project"])
+        query += " AND project LIKE ?"
+        params.append(f"%{request.args['project']}%")
     if request.args.get("due_before"):
         try:
             due_before = parse_date(request.args.get("due_before"))
