@@ -65,3 +65,27 @@ export function PriorityBadge({ priority }) {
     </span>
   );
 }
+
+export const CATEGORY_LABEL = {
+  kerja: "Kerja",
+  meeting: "Meeting/Diskusi",
+};
+
+const CATEGORY_STYLE = {
+  kerja: "bg-ink/[0.06] text-ink-soft",
+  meeting: "bg-accent/10 text-accent",
+};
+
+export function CategoryBadge({ category }) {
+  if (!category) return null;
+  return (
+    <span
+      className={clsx(
+        "inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold",
+        CATEGORY_STYLE[category] || CATEGORY_STYLE.kerja
+      )}
+    >
+      {CATEGORY_LABEL[category] || category}
+    </span>
+  );
+}

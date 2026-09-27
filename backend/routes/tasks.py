@@ -32,6 +32,9 @@ def list_tasks():
     if request.args.get("priority"):
         query += " AND priority = ?"
         params.append(request.args["priority"])
+    if request.args.get("category"):
+        query += " AND category = ?"
+        params.append(request.args["category"])
     if request.args.get("due_before"):
         try:
             due_before = parse_date(request.args.get("due_before"))
@@ -179,7 +182,7 @@ def create_task():
     today = date_cls.today().isoformat()
     db.execute(
         """INSERT INTO tasks (id, title, description, assignee_id, priority, estimated_hours,
-           status, start_date, due_date, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)""",
+           status, category, start_date, due_date, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
         (
             task_id,
             data.get("title", "Tugas baru"),
@@ -188,6 +191,7 @@ def create_task():
             data.get("priority", "medium"),
             float(data.get("estimated_hours", 1)),
             data.get("status", "todo"),
+            data.get("category", "kerja"),
             data.get("start_date", today),
             data.get("due_date", today),
             datetime.utcnow().isoformat(),
@@ -207,7 +211,7 @@ def update_task(task_id):
         return jsonify({"error": "Task tidak ditemukan"}), 404
     db.execute(
         """UPDATE tasks SET title=?, description=?, assignee_id=?, priority=?, estimated_hours=?,
-           status=?, start_date=?, due_date=? WHERE id=?""",
+           status=?, category=?, start_date=?, due_date=? WHERE id=?""",
         (
             data.get("title", existing["title"]),
             data.get("description", existing["description"]),
@@ -215,6 +219,7 @@ def update_task(task_id):
             data.get("priority", existing["priority"]),
             float(data.get("estimated_hours", existing["estimated_hours"])),
             data.get("status", existing["status"]),
+            data.get("category", existing["category"] if "category" in existing.keys() else "kerja"),
             data.get("start_date", existing["start_date"]),
             data.get("due_date", existing["due_date"]),
             task_id,

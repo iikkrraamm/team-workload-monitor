@@ -8,6 +8,7 @@ const FALLBACK_DEFAULTS = {
   description: "",
   assignee_id: "",
   priority: "medium",
+  category: "kerja",
   estimated_hours: 4,
   status: "todo",
   start_date: new Date().toISOString().slice(0, 10),
@@ -73,6 +74,13 @@ export default function TaskModal({ initial, members, onClose, onSave, onDelete 
             </Select>
           </Field>
         </div>
+
+        <Field label="Kategori">
+          <Select value={form.category || "kerja"} onChange={(e) => update("category", e.target.value)}>
+            <option value="kerja">Kerja (ada hasil — coding, dokumen, dll)</option>
+            <option value="meeting">Meeting/Diskusi</option>
+          </Select>
+        </Field>
 
         <div className="grid grid-cols-2 gap-4">
           <Field label="Estimasi Jam">
