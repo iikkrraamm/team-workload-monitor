@@ -124,57 +124,67 @@ export default function ActivitiesPage({ members }) {
         }
       />
 
-      <Card className="mb-5 p-5">
-        <div className="flex gap-2">
+      <Card className="mb-5 p-4 sm:p-5">
+        {/* Quick add: title on its own line on phones; one row from sm up */}
+        <div className="flex flex-col gap-2.5 sm:flex-row">
           <Input
-            placeholder="Tambah cepat: judul aktivitas lalu Enter..."
+            placeholder="Tambah cepat: judul aktivitas, lalu Enter"
             value={quickTitle}
             onChange={(e) => setQuickTitle(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && quickAdd()}
-            className="flex-1"
+            className="sm:flex-1"
           />
-          <Input
-            type="number"
-            min="0.25"
-            step="0.25"
-            aria-label="Durasi (jam)"
-            title="Durasi (jam)"
-            value={quickHours}
-            onChange={(e) => setQuickHours(e.target.value)}
-            className="w-20 shrink-0"
-          />
-          <Button variant="primary" onClick={quickAdd} disabled={!quickValid}>
-            Tambah
-          </Button>
+          <div className="flex gap-2.5">
+            <div className="relative w-28 shrink-0">
+              <Input
+                type="number"
+                min="0.25"
+                step="0.25"
+                inputMode="decimal"
+                aria-label="Durasi (jam)"
+                value={quickHours}
+                onChange={(e) => setQuickHours(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && quickAdd()}
+                className="w-full pr-11 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-ink-faint">
+                jam
+              </span>
+            </div>
+            <Button variant="primary" onClick={quickAdd} disabled={!quickValid} className="flex-1 sm:flex-none">
+              Tambah
+            </Button>
+          </div>
         </div>
 
-        <div className="mt-3.5 flex flex-wrap items-center gap-2.5">
+        {/* Filters */}
+        <div className="mt-4 grid grid-cols-2 gap-2.5 border-t border-line pt-4 sm:flex sm:flex-wrap sm:items-center">
           <MultiSelect
             options={memberOptions}
             selected={filterMember}
             onChange={setFilterMember}
             placeholder="Semua anggota"
             noun="anggota"
-            className="w-full sm:w-44"
+            className="col-span-2 w-full sm:w-44"
           />
-          <div className="relative">
+          <div className="relative col-span-2">
             <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
             <Input
               placeholder="Cari judul..."
               value={filterQ}
               onChange={(e) => setFilterQ(e.target.value)}
-              className="w-48 pl-8"
+              className="w-full pl-8 sm:w-48"
             />
           </div>
-          <label className="flex items-center gap-1.5 text-[12.5px] text-ink-soft">
+          <label className="flex flex-col gap-1 text-[12.5px] text-ink-soft sm:flex-row sm:items-center sm:gap-1.5">
             Dari
-            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-auto" />
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full sm:w-auto" />
           </label>
-          <label className="flex items-center gap-1.5 text-[12.5px] text-ink-soft">
+          <label className="flex flex-col gap-1 text-[12.5px] text-ink-soft sm:flex-row sm:items-center sm:gap-1.5">
             Sampai
-            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-auto" />
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full sm:w-auto" />
           </label>
-          <Button variant="ghost" onClick={resetFilters}>
+          <Button variant="ghost" onClick={resetFilters} className="col-span-2 sm:col-span-1">
             Reset
           </Button>
         </div>
