@@ -1,11 +1,14 @@
 const BASE = "/api";
 
 function buildUrl(path, query) {
-  const queryParams = Object.fromEntries(
-    Object.entries(query || {}).filter(([, value]) => value != null)
-  );
-  const params = new URLSearchParams(queryParams).toString();
-  return `${BASE}${path}${params ? `?${params}` : ""}`;
+  const params = new URLSearchParams();
+  Object.entries(query || {}).forEach(([key, value]) => {
+    if (value == null) return;
+    if (Array.isArray(value)) value.forEach((v) => params.append(key, v));
+    else params.append(key, value);
+  });
+  const qs = params.toString();
+  return `${BASE}${path}${qs ? `?${qs}` : ""}`;
 }
 
 async function request(path, { method = "GET", query, body } = {}) {

@@ -18,26 +18,31 @@ from workload import (
 tasks_bp = Blueprint("tasks", __name__)
 
 
+def _add_in_filter(query, params, column, values):
+    """Append `AND column IN (?, ?, ...)` for a non-empty list of values."""
+    if not values:
+        return query
+    placeholders = ",".join("?" for _ in values)
+    params.extend(values)
+    return query + f" AND {column} IN ({placeholders})"
+
+
 @tasks_bp.get("/api/tasks")
 def list_tasks():
     db = get_db()
     query = "SELECT * FROM tasks WHERE 1=1"
     params = []
-    if request.args.get("assignee_id"):
-        query += " AND assignee_id = ?"
-        params.append(request.args["assignee_id"])
-    if request.args.get("status"):
-        query += " AND status = ?"
-        params.append(request.args["status"])
-    if request.args.get("priority"):
-        query += " AND priority = ?"
-        params.append(request.args["priority"])
-    if request.args.get("category"):
-        query += " AND category = ?"
-        params.append(request.args["category"])
-    if request.args.get("project"):
-        query += " AND project LIKE ?"
-        params.append(f"%{request.args['project']}%")
+    # Multi-select filters arrive as repeated params (?priority=a&priority=b).
+    # A single value still works, so older callers are unaffected.
+    for arg, column in (
+        ("assignee_id", "assignee_id"),
+        ("status", "status"),
+        ("priority", "priority"),
+        ("category", "category"),
+        ("project", "project"),
+    ):
+        values = [v for v in request.args.getlist(arg) if v]
+        query = _add_in_filter(query, params, column, values)
     if request.args.get("due_before"):
         try:
             due_before = parse_date(request.args.get("due_before"))

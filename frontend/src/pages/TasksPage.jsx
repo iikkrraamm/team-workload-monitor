@@ -6,7 +6,8 @@ import Card from "../components/ui/Card";
 import PageHeader from "../components/ui/PageHeader";
 import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
-import { Input, Select } from "../components/ui/Field";
+import { Input } from "../components/ui/Field";
+import MultiSelect from "../components/ui/MultiSelect";
 import TaskCard from "../components/TaskCard";
 import TaskModal from "../components/TaskModal";
 
@@ -16,12 +17,31 @@ const COLUMNS = [
   { key: "done", label: "Selesai" },
 ];
 
+const PRIORITY_OPTIONS = [
+  { value: "urgent", label: "Urgent" },
+  { value: "high", label: "Tinggi" },
+  { value: "medium", label: "Sedang" },
+  { value: "low", label: "Rendah" },
+];
+
+const CATEGORY_OPTIONS = [
+  { value: "kerja", label: "Kerja" },
+  { value: "meeting", label: "Meeting/Diskusi" },
+  { value: "cuti", label: "Cuti/Libur" },
+  { value: "lainnya", label: "Lainnya" },
+];
+
+// When a multi-select filter has exactly one value picked, that value is a
+// sensible default for new tasks; with none or several picked it isn't.
+const onlyValue = (arr) => (arr.length === 1 ? arr[0] : undefined);
+
 export default function TasksPage({ members, refreshSignal }) {
   const [tasks, setTasks] = useState([]);
-  const [filterAssignee, setFilterAssignee] = useState("");
-  const [filterPriority, setFilterPriority] = useState("");
-  const [filterCategory, setFilterCategory] = useState("");
-  const [filterProject, setFilterProject] = useState("");
+  const [allProjects, setAllProjects] = useState([]);
+  const [filterAssignee, setFilterAssignee] = useState([]);
+  const [filterPriority, setFilterPriority] = useState([]);
+  const [filterCategory, setFilterCategory] = useState([]);
+  const [filterProject, setFilterProject] = useState([]);
   const [filterQ, setFilterQ] = useState("");
   const [filterDueBefore, setFilterDueBefore] = useState("");
   const [filterDueAfter, setFilterDueAfter] = useState("");
@@ -30,30 +50,46 @@ export default function TasksPage({ members, refreshSignal }) {
 
   const load = useCallback(() => {
     const f = {};
-    if (filterAssignee) f.assignee_id = filterAssignee;
-    if (filterPriority) f.priority = filterPriority;
-    if (filterCategory) f.category = filterCategory;
-    if (filterProject) f.project = filterProject;
+    if (filterAssignee.length) f.assignee_id = filterAssignee;
+    if (filterPriority.length) f.priority = filterPriority;
+    if (filterCategory.length) f.category = filterCategory;
+    if (filterProject.length) f.project = filterProject;
     if (filterQ) f.q = filterQ;
     if (filterDueBefore) f.due_before = filterDueBefore;
     if (filterDueAfter) f.due_after = filterDueAfter;
     api.getTasks(f).then(setTasks).catch(console.error);
   }, [filterAssignee, filterPriority, filterCategory, filterProject, filterQ, filterDueBefore, filterDueAfter]);
 
+  // Project suggestions must come from ALL tasks, not the filtered list —
+  // otherwise filtering by one project would hide every other suggestion.
+  const loadProjects = useCallback(() => {
+    api
+      .getTasks({})
+      .then((all) =>
+        setAllProjects([...new Set(all.map((t) => t.project).filter(Boolean))].sort())
+      )
+      .catch(console.error);
+  }, []);
+
   useEffect(() => {
     load();
   }, [load, refreshSignal]);
 
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects, refreshSignal]);
+
   const memberById = Object.fromEntries(members.map((m) => [m.id, m]));
-  const existingProjects = [...new Set(tasks.map((t) => t.project).filter(Boolean))].sort();
+  const memberOptions = members.map((m) => ({ value: m.id, label: m.name }));
+  const projectOptions = allProjects.map((p) => ({ value: p, label: p }));
 
   const buildDefaultDraft = () => ({
     title: "",
     description: "",
-    assignee_id: filterAssignee || members[0]?.id || "",
-    priority: filterPriority || "medium",
-    category: filterCategory || "kerja",
-    project: filterProject || "",
+    assignee_id: onlyValue(filterAssignee) || members[0]?.id || "",
+    priority: onlyValue(filterPriority) || "medium",
+    category: onlyValue(filterCategory) || "kerja",
+    project: onlyValue(filterProject) || "",
     estimated_hours: 4,
     status: "todo",
     start_date: filterDueAfter || formatDateInput(new Date()),
@@ -74,14 +110,15 @@ export default function TasksPage({ members, refreshSignal }) {
     if (!quickTitle.trim()) return;
     await api.createTask({
       title: quickTitle.trim(),
-      priority: filterPriority || "medium",
-      category: filterCategory || "kerja",
-      project: filterProject || undefined,
-      assignee_id: filterAssignee || undefined,
+      priority: onlyValue(filterPriority) || "medium",
+      category: onlyValue(filterCategory) || "kerja",
+      project: onlyValue(filterProject),
+      assignee_id: onlyValue(filterAssignee),
       estimated_hours: 3,
     });
     setQuickTitle("");
     load();
+    loadProjects();
   };
 
   const handleSave = async (form) => {
@@ -89,12 +126,14 @@ export default function TasksPage({ members, refreshSignal }) {
     else await api.createTask(form);
     setFormTask(null);
     load();
+    loadProjects();
   };
 
   const handleDelete = async (id) => {
     await api.deleteTask(id);
     setFormTask(null);
     load();
+    loadProjects();
   };
 
   const moveTask = async (task, newStatus) => {
@@ -103,10 +142,10 @@ export default function TasksPage({ members, refreshSignal }) {
   };
 
   const resetFilters = () => {
-    setFilterAssignee("");
-    setFilterPriority("");
-    setFilterCategory("");
-    setFilterProject("");
+    setFilterAssignee([]);
+    setFilterPriority([]);
+    setFilterCategory([]);
+    setFilterProject([]);
     setFilterQ("");
     setFilterDueBefore("");
     setFilterDueAfter("");
@@ -139,40 +178,40 @@ export default function TasksPage({ members, refreshSignal }) {
         </div>
 
         <div className="mt-3.5 flex flex-wrap items-center gap-2.5">
-          <Select value={filterAssignee} onChange={(e) => setFilterAssignee(e.target.value)} className="w-auto min-w-[150px]">
-            <option value="">Semua anggota</option>
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </Select>
-          <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} className="w-auto min-w-[140px]">
-            <option value="">Semua prioritas</option>
-            <option value="urgent">Urgent</option>
-            <option value="high">Tinggi</option>
-            <option value="medium">Sedang</option>
-            <option value="low">Rendah</option>
-          </Select>
-          <Select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="w-auto min-w-[150px]">
-            <option value="">Semua kategori</option>
-            <option value="kerja">Kerja</option>
-            <option value="meeting">Meeting/Diskusi</option>
-            <option value="cuti">Cuti/Libur</option>
-            <option value="lainnya">Lainnya</option>
-          </Select>
-          <Input
-            list="project-filter-suggestions"
-            placeholder="Filter project..."
-            value={filterProject}
-            onChange={(e) => setFilterProject(e.target.value)}
-            className="w-40"
+          <MultiSelect
+            options={memberOptions}
+            selected={filterAssignee}
+            onChange={setFilterAssignee}
+            placeholder="Semua anggota"
+            noun="anggota"
+            className="w-full sm:w-44"
           />
-          <datalist id="project-filter-suggestions">
-            {existingProjects.map((p) => (
-              <option key={p} value={p} />
-            ))}
-          </datalist>
+          <MultiSelect
+            options={PRIORITY_OPTIONS}
+            selected={filterPriority}
+            onChange={setFilterPriority}
+            placeholder="Semua prioritas"
+            noun="prioritas"
+            className="w-full sm:w-44"
+          />
+          <MultiSelect
+            options={CATEGORY_OPTIONS}
+            selected={filterCategory}
+            onChange={setFilterCategory}
+            placeholder="Semua kategori"
+            noun="kategori"
+            className="w-full sm:w-44"
+          />
+          <MultiSelect
+            options={projectOptions}
+            selected={filterProject}
+            onChange={setFilterProject}
+            placeholder="Semua project"
+            noun="project"
+            searchPlaceholder="Cari project"
+            allowCustom
+            className="w-full sm:w-44"
+          />
           <div className="relative">
             <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
             <Input
@@ -232,7 +271,7 @@ export default function TasksPage({ members, refreshSignal }) {
         <TaskModal
           initial={formTask}
           members={members}
-          existingProjects={existingProjects}
+          existingProjects={allProjects}
           onClose={() => setFormTask(null)}
           onSave={handleSave}
           onDelete={handleDelete}
