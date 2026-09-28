@@ -18,17 +18,34 @@ def list_members():
 
 @members_bp.get("/api/activities")
 def list_activities():
-    member_id = request.args.get("member_id")
-    activity_date = request.args.get("date")
     query = "SELECT * FROM activities WHERE 1=1"
     params = []
-    if member_id:
-        query += " AND member_id = ?"
-        params.append(member_id)
-    if activity_date:
+
+    # member_id may be repeated (?member_id=a&member_id=b) for multi-select.
+    member_ids = [v for v in request.args.getlist("member_id") if v]
+    if member_ids:
+        query += f" AND member_id IN ({','.join('?' for _ in member_ids)})"
+        params.extend(member_ids)
+
+    # `date` = one exact day (kept for existing callers); date_from/date_to
+    # = an inclusive range, either side optional.
+    if request.args.get("date"):
         query += " AND date = ?"
-        params.append(activity_date)
-    rows = get_db().execute(query + " ORDER BY date DESC", params).fetchall()
+        params.append(request.args["date"])
+    if request.args.get("date_from"):
+        query += " AND date >= ?"
+        params.append(request.args["date_from"])
+    if request.args.get("date_to"):
+        query += " AND date <= ?"
+        params.append(request.args["date_to"])
+
+    if request.args.get("q"):
+        query += " AND title LIKE ?"
+        params.append(f"%{request.args['q']}%")
+
+    rows = get_db().execute(
+        query + " ORDER BY date DESC, created_at DESC", params
+    ).fetchall()
     return jsonify([activity_row_to_dict(row) for row in rows])
 
 
@@ -51,6 +68,28 @@ def create_activity():
     db.commit()
     row = db.execute("SELECT * FROM activities WHERE id = ?", (activity_id,)).fetchone()
     return jsonify(activity_row_to_dict(row)), 201
+
+
+@members_bp.put("/api/activities/<activity_id>")
+def update_activity(activity_id):
+    data = request.get_json(force=True)
+    db = get_db()
+    existing = db.execute("SELECT * FROM activities WHERE id = ?", (activity_id,)).fetchone()
+    if not existing:
+        return jsonify({"error": "Aktivitas tidak ditemukan"}), 404
+    db.execute(
+        "UPDATE activities SET member_id=?, title=?, hours=?, date=? WHERE id=?",
+        (
+            data.get("member_id", existing["member_id"]),
+            data.get("title", existing["title"]),
+            float(data.get("hours", existing["hours"])),
+            data.get("date") or existing["date"],
+            activity_id,
+        ),
+    )
+    db.commit()
+    row = db.execute("SELECT * FROM activities WHERE id = ?", (activity_id,)).fetchone()
+    return jsonify(activity_row_to_dict(row))
 
 
 @members_bp.delete("/api/activities/<activity_id>")

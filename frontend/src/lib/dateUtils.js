@@ -17,3 +17,19 @@ export function shiftWorkloadDate(value, amount, period) {
   }
   return formatDateInput(date);
 }
+
+export function startOfMonth(date = new Date()) {
+  return formatDateInput(new Date(date.getFullYear(), date.getMonth(), 1));
+}
+
+// "2026-09-28" -> "Senin, 28 September 2026". Parsed as local noon so the
+// date never shifts a day because of the timezone.
+export function formatDateLabel(value) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Intl.DateTimeFormat("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(year, month - 1, day, 12));
+}

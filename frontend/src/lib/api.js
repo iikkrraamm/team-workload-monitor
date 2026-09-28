@@ -39,6 +39,7 @@ export const api = {
   // Activities (non-task work)
   getActivities: (filters = {}) => request("/activities", { query: filters }),
   createActivity: (data) => request("/activities", { method: "POST", body: data }),
+  updateActivity: (id, data) => request(`/activities/${id}`, { method: "PUT", body: data }),
   deleteActivity: (id) => request(`/activities/${id}`, { method: "DELETE" }),
   createTask: (data) => request("/tasks", { method: "POST", body: data }),
   updateTask: (id, data) => request(`/tasks/${id}`, { method: "PUT", body: data }),
