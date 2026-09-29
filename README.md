@@ -9,16 +9,22 @@ overload, deteksi burnout, dan asisten chat AI untuk CRUD tugas secara cepat.
 2. **Workload harian, mingguan, bulanan** — dihitung dari estimasi jam tugas yang
    disebar merata di sepanjang rentang tanggalnya, dibandingkan kapasitas jam/hari
    tiap anggota.
-3. **Deteksi overload + saran pintar** — saat beban seseorang ≥110% kapasitas,
+3. **Deteksi overload + saran pintar** — saat beban seseorang di atas 100% kapasitas,
    sistem menyarankan *reschedule* (tugas prioritas rendah digeser) atau
    *reassign* ke rekan tim yang masih longgar, mempertimbangkan prioritas tugas.
-4. **Deteksi burnout** — melihat tren 14 hari terakhir; jika overload beruntun
-   ≥5 hari atau ≥10 dari 14 hari, sistem menandai risiko tinggi dan menyarankan cuti.
+4. **Deteksi burnout** — melihat 14 hari terakhir (sampai hari ini). Sebuah hari
+   dihitung overload jika bebannya di atas 100% kapasitas harian. Risiko
+   **tinggi** jika overload beruntun (`streak`, dihitung mundur dari hari ini)
+   ≥5 hari **atau** ≥10 dari 14 hari overload; risiko **sedang** jika streak ≥3
+   hari **atau** ≥6 dari 14 hari. Hanya risiko sedang/tinggi yang tampil di
+   dashboard, dengan saran mengambil cuti/istirahat.
    Tugas berkategori **Cuti/Libur** tidak dihitung sebagai beban di sini, jadi
    orang yang sedang cuti tidak ikut ditandai. (Persentase beban di dashboard dan
-   Analisis Beban tetap menghitung semua tugas.)
-5. **Klasifikasi status** — Idle (<30%), Normal (30–79%), Padat (80–109%),
-   Overload (≥110%) — tampil di dashboard per anggota.
+   Analisis Beban tetap menghitung semua tugas.) Catatan: hari cuti memutus
+   streak, tetapi hari overload sebelumnya tetap masuk hitungan 14 hari, sehingga
+   peringatan dapat bertahan sampai hari-hari overload itu keluar dari jendela.
+5. **Klasifikasi status** — Idle (0 jam), Low (<30%), Normal (30–80%),
+   Padat (>80–100%), Overload (>100%) — tampil di dashboard per anggota.
 6. **CRUD super cepat** — quick-add satu baris di halaman Tugas, drag status
    lewat tombol pada kartu, dan **chat AI** di pojok kanan bawah untuk perintah
    bahasa natural, misalnya:
