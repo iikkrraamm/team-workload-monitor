@@ -186,9 +186,12 @@ export default function SqlPage({ onDataChanged }) {
         }
       />
 
-      <div className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
+      {/* grid-cols-1 matters: a bare `grid` below lg has an auto-sized column that
+          grows to the longest one-line text (a saved query's SQL preview) and
+          drags every card in it past the screen edge. */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
         {/* Side column: below the editor on phones, left on desktop */}
-        <div className="order-2 space-y-5 lg:order-1">
+        <div className="order-2 min-w-0 space-y-5 lg:order-1">
           <Card className="p-4">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-[14px] font-semibold text-ink">Query Tersimpan</h2>
@@ -343,7 +346,7 @@ export default function SqlPage({ onDataChanged }) {
           </Card>
 
           {error && (
-            <div className="rounded-xl border border-status-overload/30 bg-status-overload/[0.06] px-4 py-3 font-mono text-[12.5px] text-status-overload">
+            <div className="rounded-xl border border-status-overload/30 bg-status-overload/[0.06] px-4 py-3 break-words font-mono text-[12.5px] text-status-overload">
               {error}
             </div>
           )}
