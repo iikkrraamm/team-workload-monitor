@@ -18,6 +18,10 @@ from workload import (
 
 workload_bp = Blueprint("workload", __name__)
 
+# Risk levels shown in the dashboard's burnout card. "medium" is still
+# computed and returned by /api/burnout, it just isn't raised as a warning.
+DASHBOARD_ALERT_LEVELS = ("high",)
+
 
 @workload_bp.get("/api/workload")
 def get_workload():
@@ -152,7 +156,7 @@ def get_dashboard():
 
     burnout_alerts = [
         risk for risk in (compute_burnout_risk(db, member, ref_date) for member in members)
-        if risk["risk"] in ("medium", "high")
+        if risk["risk"] in DASHBOARD_ALERT_LEVELS
     ]
     task_status_counts = {"todo": 0, "in_progress": 0, "done": 0}
     tasks = db.execute("SELECT status FROM tasks").fetchall()
