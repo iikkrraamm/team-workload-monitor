@@ -14,6 +14,9 @@ overload, deteksi burnout, dan asisten chat AI untuk CRUD tugas secara cepat.
    *reassign* ke rekan tim yang masih longgar, mempertimbangkan prioritas tugas.
 4. **Deteksi burnout** — melihat tren 14 hari terakhir; jika overload beruntun
    ≥5 hari atau ≥10 dari 14 hari, sistem menandai risiko tinggi dan menyarankan cuti.
+   Tugas berkategori **Cuti/Libur** tidak dihitung sebagai beban di sini, jadi
+   orang yang sedang cuti tidak ikut ditandai. (Persentase beban di dashboard dan
+   Analisis Beban tetap menghitung semua tugas.)
 5. **Klasifikasi status** — Idle (<30%), Normal (30–79%), Padat (80–109%),
    Overload (≥110%) — tampil di dashboard per anggota.
 6. **CRUD super cepat** — quick-add satu baris di halaman Tugas, drag status
