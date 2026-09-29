@@ -79,13 +79,13 @@ export default function DashboardPage() {
                 key={a.member_id}
                 className={
                   a.risk === "high"
-                    ? "flex items-start gap-3 rounded-xl bg-status-overload/8 px-4 py-3"
-                    : "flex items-start gap-3 rounded-xl bg-status-padat/8 px-4 py-3"
+                    ? "flex items-start gap-3 rounded-xl bg-status-overload/[0.08] px-4 py-3"
+                    : "flex items-start gap-3 rounded-xl bg-status-padat/[0.08] px-4 py-3"
                 }
               >
                 <AlertTriangle
                   size={17}
-                  className={a.risk === "high" ? "mt-0.5 text-status-overload" : "mt-0.5 text-status-padat"}
+                  className={a.risk === "high" ? "mt-0.5 shrink-0 text-status-overload" : "mt-0.5 shrink-0 text-status-padat"}
                 />
                 <div className="min-w-0 break-words text-[13.5px] leading-relaxed text-ink">
                   <strong className="font-semibold">{a.member_name}</strong> — {a.message}
@@ -96,8 +96,10 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Card className="p-5">
+      {/* grid-cols-1 matters: a bare `grid` has an auto-sized column that grows to
+          the longest unbroken line (task titles), pushing both cards off-screen. */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <Card className="min-w-0 p-5">
           <div className="mb-4 text-[15px] font-semibold text-ink">Beban Kerja Hari Ini</div>
           <div className="space-y-4">
             {data.member_cards.map((mc) => (
@@ -167,7 +169,7 @@ export default function DashboardPage() {
           </div>
         </Card>
 
-        <Card className="p-5">
+        <Card className="min-w-0 p-5">
           <div className="mb-4 text-[15px] font-semibold text-ink">Status Tugas</div>
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <Card className="min-w-0 border-none bg-ink/[0.03] p-2.5 shadow-none sm:p-3.5">
