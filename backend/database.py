@@ -60,6 +60,14 @@ def init_db():
             created_at TEXT NOT NULL,
             FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS saved_queries (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            sql TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
         """
     )
     conn.commit()

@@ -52,6 +52,14 @@ export const api = {
   getWorkloadDetails: (member_id, period, date) =>
     request("/workload/details", { query: { member_id, period, date } }),
 
+  // SQL client
+  getSqlSchema: () => request("/sql/schema"),
+  executeSql: (sql) => request("/sql/execute", { method: "POST", body: { sql } }),
+  getSavedQueries: () => request("/sql/queries"),
+  createSavedQuery: (data) => request("/sql/queries", { method: "POST", body: data }),
+  updateSavedQuery: (id, data) => request(`/sql/queries/${id}`, { method: "PUT", body: data }),
+  deleteSavedQuery: (id) => request(`/sql/queries/${id}`, { method: "DELETE" }),
+
   // AI chat
   sendChat: (message) => request("/ai-chat", { method: "POST", body: { message } }),
 };

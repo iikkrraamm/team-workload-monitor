@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import clsx from "clsx";
 
 export const inputClass =
@@ -31,9 +32,10 @@ export function Select({ className, children, ...props }) {
   );
 }
 
-export function Textarea({ className, ...props }) {
+export const Textarea = forwardRef(function Textarea({ className, ...props }, ref) {
   return (
     <textarea
+      ref={ref}
       className={clsx(
         widthDefault(className),
         "rounded-lg border border-line bg-white px-3 py-2 text-[14px] text-ink placeholder:text-ink-faint outline-none transition-shadow focus:border-accent focus:ring-2 focus:ring-accent/20",
@@ -42,4 +44,4 @@ export function Textarea({ className, ...props }) {
       {...props}
     />
   );
-}
+});
