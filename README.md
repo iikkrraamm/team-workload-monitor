@@ -16,13 +16,15 @@ overload, deteksi burnout, dan asisten chat AI untuk CRUD tugas secara cepat.
    dihitung overload jika bebannya di atas 100% kapasitas harian. Risiko
    **tinggi** jika overload beruntun (`streak`, dihitung mundur dari hari ini)
    ≥5 hari **atau** ≥10 dari 14 hari overload; risiko **sedang** jika streak ≥3
-   hari **atau** ≥6 dari 14 hari. Hanya risiko sedang/tinggi yang tampil di
-   dashboard, dengan saran mengambil cuti/istirahat.
+   hari **atau** ≥6 dari 14 hari. Dashboard hanya menampilkan peringatan untuk
+   risiko **tinggi** (risiko sedang tetap dihitung dan tersedia di
+   `/api/burnout`), dengan saran mengambil cuti/istirahat.
    Tugas berkategori **Cuti/Libur** tidak dihitung sebagai beban di sini, jadi
    orang yang sedang cuti tidak ikut ditandai. (Persentase beban di dashboard dan
    Analisis Beban tetap menghitung semua tugas.) Catatan: hari cuti memutus
-   streak, tetapi hari overload sebelumnya tetap masuk hitungan 14 hari, sehingga
-   peringatan dapat bertahan sampai hari-hari overload itu keluar dari jendela.
+   streak, tetapi hari overload sebelumnya tetap masuk hitungan 14 hari. Jadi
+   anggota yang cuti setelah ≥10 hari overload masih bisa muncul (risiko tinggi
+   lewat syarat 10 dari 14 hari) sampai hari-hari overload itu keluar dari jendela.
 5. **Klasifikasi status** — Idle (0 jam), Low (<30%), Normal (30–80%),
    Padat (>80–100%), Overload (>100%) — tampil di dashboard per anggota.
 6. **CRUD super cepat** — quick-add satu baris di halaman Tugas, drag status
