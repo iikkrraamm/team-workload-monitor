@@ -35,6 +35,16 @@ overload, deteksi burnout, dan asisten chat AI untuk CRUD tugas secara cepat.
    `SQL_CLIENT_ALLOW_WRITE=1` di server, dan hanya lakukan itu kalau akses ke
    aplikasi sudah dibatasi.
 
+   **Ekspor hasil:** tombol *Ekspor* di atas tabel hasil mengunduh data sebagai
+   Excel (`.xlsx`) atau teks dengan delimiter yang bisa dipilih (koma,
+   titik koma, tab, pipe, atau karakter kustom hingga 10 karakter), dengan
+   opsi menyertakan baris judul. Ekspor menjalankan ulang query dan mencakup
+   hingga 100.000 baris (tabel di layar hanya 1000). Ekspor selalu read-only,
+   dan sel teks yang diawali `= + - @` diberi tanda `'` secara default agar
+   tidak dieksekusi sebagai formula saat dibuka di Excel/Sheets. File Excel
+   dibuat tanpa library tambahan, jadi tidak ada paket baru yang perlu
+   di-install di server.
+
 ## Menjalankan Backend
 
 ```bash
@@ -88,7 +98,8 @@ backend/
     tasks.py        # Task and task-risk endpoints
     workload.py     # Workload, burnout, and dashboard endpoints
     system.py       # Chat and health endpoints
-    sql.py          # SQL client and saved queries
+    sql.py          # SQL client, saved queries, export
+  exporters.py      # .xlsx and delimited-text writers
   requirements.txt
 frontend/
   src/
