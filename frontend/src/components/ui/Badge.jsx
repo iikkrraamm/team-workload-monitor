@@ -93,3 +93,24 @@ export function CategoryBadge({ category }) {
     </span>
   );
 }
+
+export const RISK_LABEL = {
+  cukup: "Cukup",
+  ketat: "Ketat",
+  tidak_cukup: "Tidak cukup",
+};
+
+const RISK_STYLE = {
+  cukup: "bg-status-normal/10 text-[#1a8a3d]",
+  ketat: "bg-status-padat/10 text-[#c9760a]",
+  tidak_cukup: "bg-status-overload/10 text-status-overload",
+};
+
+export function RiskBadge({ risk }) {
+  if (!risk) return null;
+  return (
+    <span className={clsx("inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-medium", RISK_STYLE[risk])}>
+      {RISK_LABEL[risk] || risk}
+    </span>
+  );
+}

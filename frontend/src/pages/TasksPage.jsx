@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, LayoutGrid, List } from "lucide-react";
 import { api } from "../lib/api";
 import { formatDateInput } from "../lib/dateUtils";
 import Card from "../components/ui/Card";
@@ -8,8 +8,31 @@ import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import { Input } from "../components/ui/Field";
 import MultiSelect from "../components/ui/MultiSelect";
+import SegmentedControl from "../components/ui/SegmentedControl";
 import TaskCard from "../components/TaskCard";
 import TaskModal from "../components/TaskModal";
+import TaskListView from "../components/TaskListView";
+
+const VIEW_STORAGE_KEY = "tasks-view-mode";
+
+const VIEW_OPTIONS = [
+  {
+    value: "kanban",
+    label: (
+      <span className="flex items-center gap-1.5">
+        <LayoutGrid size={14} /> Kanban
+      </span>
+    ),
+  },
+  {
+    value: "list",
+    label: (
+      <span className="flex items-center gap-1.5">
+        <List size={14} /> List
+      </span>
+    ),
+  },
+];
 
 const COLUMNS = [
   { key: "todo", label: "Belum Dikerjakan" },
@@ -38,6 +61,13 @@ const onlyValue = (arr) => (arr.length === 1 ? arr[0] : undefined);
 export default function TasksPage({ members, refreshSignal }) {
   const [tasks, setTasks] = useState([]);
   const [allProjects, setAllProjects] = useState([]);
+  const [viewMode, setViewMode] = useState(() => {
+    try {
+      return localStorage.getItem(VIEW_STORAGE_KEY) === "list" ? "list" : "kanban";
+    } catch {
+      return "kanban";
+    }
+  });
   const [filterAssignee, setFilterAssignee] = useState([]);
   const [filterPriority, setFilterPriority] = useState([]);
   const [filterCategory, setFilterCategory] = useState([]);
@@ -136,8 +166,24 @@ export default function TasksPage({ members, refreshSignal }) {
     loadProjects();
   };
 
+  const changeView = (mode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem(VIEW_STORAGE_KEY, mode);
+    } catch {
+      // Private browsing / storage disabled — the toggle still works for
+      // this session, it just won't be remembered next time.
+    }
+  };
+
   const moveTask = async (task, newStatus) => {
     await api.updateTask(task.id, { status: newStatus });
+    load();
+  };
+
+  // Inline edits from the list view (status/priority dropdowns).
+  const quickUpdate = async (taskId, patch) => {
+    await api.updateTask(taskId, patch);
     load();
   };
 
@@ -157,9 +203,12 @@ export default function TasksPage({ members, refreshSignal }) {
         title="Tugas Tim"
         subtitle="Kelola tugas dengan cepat — geser status, atau pakai chat AI untuk input super cepat."
         action={
-          <Button variant="primary" onClick={openNew}>
-            <Plus size={16} /> Tugas Baru
-          </Button>
+          <div className="flex items-center gap-2.5">
+            <SegmentedControl options={VIEW_OPTIONS} value={viewMode} onChange={changeView} />
+            <Button variant="primary" onClick={openNew}>
+              <Plus size={16} /> Tugas Baru
+            </Button>
+          </div>
         }
       />
 
@@ -235,34 +284,45 @@ export default function TasksPage({ members, refreshSignal }) {
         </div>
       </Card>
 
-      <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2 snap-x snap-mandatory md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0">
-        {COLUMNS.map((col) => {
-          const colTasks = tasks.filter((t) => t.status === col.key);
-          return (
-            <div key={col.key} className="w-[85vw] shrink-0 snap-start md:w-auto md:shrink">
-              <div className="mb-3 flex items-center gap-2 text-[13px] font-semibold text-ink-soft">
-                {col.label}
-                <span className="rounded-full bg-ink/[0.06] px-2 py-0.5 text-[11px] text-ink-soft">
-                  {colTasks.length}
-                </span>
+      {viewMode === "kanban" ? (
+        <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2 snap-x snap-mandatory md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0">
+          {COLUMNS.map((col) => {
+            const colTasks = tasks.filter((t) => t.status === col.key);
+            return (
+              <div key={col.key} className="w-[85vw] shrink-0 snap-start md:w-auto md:shrink">
+                <div className="mb-3 flex items-center gap-2 text-[13px] font-semibold text-ink-soft">
+                  {col.label}
+                  <span className="rounded-full bg-ink/[0.06] px-2 py-0.5 text-[11px] text-ink-soft">
+                    {colTasks.length}
+                  </span>
+                </div>
+                {colTasks.map((t) => (
+                  <TaskCard
+                    key={t.id}
+                    task={t}
+                    assignee={memberById[t.assignee_id]}
+                    columns={COLUMNS}
+                    currentStatus={col.key}
+                    onOpen={() => setFormTask(t)}
+                    onMove={(newStatus) => moveTask(t, newStatus)}
+                    onCopy={openCopy}
+                  />
+                ))}
+                {colTasks.length === 0 && <EmptyState>Tidak ada tugas</EmptyState>}
               </div>
-              {colTasks.map((t) => (
-                <TaskCard
-                  key={t.id}
-                  task={t}
-                  assignee={memberById[t.assignee_id]}
-                  columns={COLUMNS}
-                  currentStatus={col.key}
-                  onOpen={() => setFormTask(t)}
-                  onMove={(newStatus) => moveTask(t, newStatus)}
-                  onCopy={openCopy}
-                />
-              ))}
-              {colTasks.length === 0 && <EmptyState>Tidak ada tugas</EmptyState>}
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      ) : (
+        <TaskListView
+          tasks={tasks}
+          memberById={memberById}
+          members={members}
+          onOpen={(t) => setFormTask(t)}
+          onCopy={openCopy}
+          onQuickUpdate={quickUpdate}
+        />
+      )}
 
       {formTask && (
         <TaskModal

@@ -1,19 +1,7 @@
 import clsx from "clsx";
 import { Copy, Folder } from "lucide-react";
 import { initials } from "./ui/Avatar";
-import { PriorityBadge, CategoryBadge } from "./ui/Badge";
-
-const RISK_STYLE = {
-  cukup: "bg-status-normal/10 text-[#1a8a3d]",
-  ketat: "bg-status-padat/10 text-[#c9760a]",
-  tidak_cukup: "bg-status-overload/10 text-status-overload",
-};
-
-const RISK_LABEL = {
-  cukup: "Cukup",
-  ketat: "Ketat",
-  tidak_cukup: "Tidak cukup",
-};
+import { PriorityBadge, CategoryBadge, RiskBadge } from "./ui/Badge";
 
 export default function TaskCard({ task, assignee, columns, currentStatus, onOpen, onMove, onCopy }) {
   const t = task;
@@ -77,11 +65,7 @@ export default function TaskCard({ task, assignee, columns, currentStatus, onOpe
           Estimasi <strong className="font-semibold text-ink">{t.estimated_hours}h</strong>
         </span>
         <span>Sisa hari kerja: {t.deadline?.work_days_remaining ?? "-"}</span>
-        {t.deadline && (
-          <span className={clsx("rounded-full px-2 py-0.5 font-medium", RISK_STYLE[t.deadline.risk])}>
-            {RISK_LABEL[t.deadline.risk] || t.deadline.risk}
-          </span>
-        )}
+        {t.deadline && <RiskBadge risk={t.deadline.risk} />}
       </div>
 
       {t.deadline?.counted_as_history && (
