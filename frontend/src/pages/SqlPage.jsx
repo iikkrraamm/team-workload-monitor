@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import {
   ChevronRight,
+  Download,
   Lock,
   Pencil,
   Play,
@@ -19,6 +20,7 @@ import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import { Input, Textarea } from "../components/ui/Field";
 import SaveQueryModal from "../components/SaveQueryModal";
+import ExportResultModal from "../components/ExportResultModal";
 import SqlResultTable from "../components/SqlResultTable";
 
 const DEFAULT_SQL = "SELECT * FROM tasks LIMIT 20;";
@@ -35,6 +37,8 @@ export default function SqlPage({ onDataChanged }) {
   const [activeId, setActiveId] = useState(null);
   const [filterQ, setFilterQ] = useState("");
   const [saveModal, setSaveModal] = useState(null); // { mode: "new" | "rename", query? }
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportNote, setExportNote] = useState(null);
 
   const [schema, setSchema] = useState({ tables: [], allow_write: false });
   const [openTables, setOpenTables] = useState({});
@@ -78,9 +82,12 @@ export default function SqlPage({ onDataChanged }) {
     if (!statement.trim() || running) return;
     setRunning(true);
     setError("");
+    setExportNote(null);
     try {
       const res = await api.executeSql(statement);
-      setResult(res);
+      // Keep the statement itself: the editor may change before exporting,
+      // and the export must match the table on screen.
+      setResult({ ...res, sql: statement });
       // Only possible when the server allows writes: keep the rest of the
       // app (team list, tasks, schema browser) in step with the change.
       if (res.rows_affected !== undefined) {
@@ -350,14 +357,29 @@ export default function SqlPage({ onDataChanged }) {
                 </p>
               ) : (
                 <>
-                  <div className="mb-3 text-[12.5px] text-ink-soft">
-                    {result.row_count} baris · {result.elapsed_ms} ms
-                    {result.truncated && (
-                      <span className="ml-2 text-status-padat">
-                        Hanya {result.row_count} baris pertama yang ditampilkan. Tambahkan LIMIT / WHERE untuk mempersempit.
-                      </span>
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-[12.5px] text-ink-soft">
+                      {result.row_count} baris · {result.elapsed_ms} ms
+                      {result.truncated && (
+                        <span className="ml-2 text-status-padat">
+                          Hanya {result.row_count} baris pertama yang ditampilkan. Tambahkan LIMIT / WHERE untuk mempersempit.
+                        </span>
+                      )}
+                    </div>
+                    {result.row_count > 0 && (
+                      <Button variant="subtle" size="sm" onClick={() => setExportOpen(true)}>
+                        <Download size={14} /> Ekspor
+                      </Button>
                     )}
                   </div>
+                  {exportNote && (
+                    <p className="mb-3 text-[12.5px] text-status-normal">
+                      Terunduh: {exportNote.filename} · {exportNote.rows} baris
+                      {exportNote.truncated && (
+                        <span className="ml-2 text-status-padat">Dibatasi 100.000 baris pertama.</span>
+                      )}
+                    </p>
+                  )}
                   {result.row_count === 0 ? (
                     <EmptyState>Query berhasil, tapi tidak ada baris yang dikembalikan</EmptyState>
                   ) : (
@@ -369,6 +391,17 @@ export default function SqlPage({ onDataChanged }) {
           )}
         </div>
       </div>
+
+      {exportOpen && result && (
+        <ExportResultModal
+          sql={result.sql}
+          columns={result.columns}
+          name={activeQuery?.name}
+          truncated={result.truncated}
+          onClose={() => setExportOpen(false)}
+          onDone={setExportNote}
+        />
+      )}
 
       {saveModal && (
         <SaveQueryModal

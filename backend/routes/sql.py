@@ -11,19 +11,25 @@ anyone who can reach the site rewrite or drop the data. Therefore:
   server is started with SQL_CLIENT_ALLOW_WRITE=1. ATTACH/DETACH stay
   blocked either way, so a query can't reach other database files.
 * Every query has a time limit and a row cap.
+* Exports always use the read-only connection, even when writes are enabled:
+  they re-run the query, and re-running an INSERT ... RETURNING would
+  duplicate data.
 """
 
+import io
 import math
 import os
+import re
 import sqlite3
 import time
 import uuid
 from datetime import datetime
 from pathlib import Path
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file
 
 from database import DB_PATH, get_db
+from exporters import XLSX_MIMETYPE, build_text, build_xlsx
 
 
 sql_bp = Blueprint("sql", __name__)
@@ -32,6 +38,12 @@ MAX_ROWS = 1000
 TIMEOUT_SECONDS = 5
 MAX_SQL_LENGTH = 100_000
 MAX_NAME_LENGTH = 120
+
+# Exports re-run the query and are allowed to be much larger than what the
+# results table shows.
+EXPORT_MAX_ROWS = 100_000
+EXPORT_TIMEOUT_SECONDS = 20
+MAX_DELIMITER_LENGTH = 10
 
 # PRAGMAs that only read metadata; allowed even in read-only mode.
 READ_ONLY_PRAGMAS = {
@@ -178,6 +190,89 @@ def execute():
         return jsonify({"error": _friendly_error(exc, allow_write)}), 400
     finally:
         conn.close()
+
+
+# --- Export ----------------------------------------------------------------
+
+
+def _export_filename(base, extension):
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", str(base or "")).strip("._")[:60]
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    return f"{safe or 'hasil-query'}-{stamp}.{extension}"
+
+
+@sql_bp.post("/api/sql/export")
+def export_results():
+    """Re-run a query and return the full result as .xlsx or delimited text."""
+    data = request.get_json(force=True, silent=True) or {}
+    sql = (data.get("sql") or "").strip()
+    if not sql:
+        return jsonify({"error": "Query tidak boleh kosong"}), 400
+    if len(sql) > MAX_SQL_LENGTH:
+        return jsonify({"error": "Query terlalu panjang"}), 400
+
+    fmt = data.get("format")
+    if fmt not in ("xlsx", "text"):
+        return jsonify({"error": "Format ekspor tidak dikenal"}), 400
+
+    delimiter = data.get("delimiter", ",")
+    if fmt == "text":
+        if (
+            not isinstance(delimiter, str)
+            or not delimiter
+            or len(delimiter) > MAX_DELIMITER_LENGTH
+            or any(ch in delimiter for ch in ('"', "\n", "\r"))
+        ):
+            return jsonify(
+                {
+                    "error": f"Delimiter harus 1-{MAX_DELIMITER_LENGTH} karakter "
+                    "dan tidak boleh berisi tanda kutip atau baris baru"
+                }
+            ), 400
+
+    conn = _open_connection(allow_write=False)
+    deadline = time.monotonic() + EXPORT_TIMEOUT_SECONDS
+    conn.set_progress_handler(lambda: time.monotonic() > deadline, 10_000)
+    try:
+        cursor = conn.execute(sql)
+        if cursor.description is None:
+            return jsonify({"error": "Query ini tidak menghasilkan data untuk diekspor"}), 400
+        columns = [d[0] for d in cursor.description]
+        fetched = cursor.fetchmany(EXPORT_MAX_ROWS + 1)
+    except sqlite3.Error as exc:
+        return jsonify({"error": _friendly_error(exc, allow_write=False)}), 400
+    finally:
+        conn.close()
+
+    truncated = len(fetched) > EXPORT_MAX_ROWS
+    rows = [[_serialize(v) for v in row] for row in fetched[:EXPORT_MAX_ROWS]]
+
+    if fmt == "xlsx":
+        try:
+            content = build_xlsx(columns, rows, sheet_title=data.get("name"))
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        mimetype, extension = XLSX_MIMETYPE, "xlsx"
+    else:
+        content = build_text(
+            columns,
+            rows,
+            delimiter,
+            header=bool(data.get("header", True)),
+            formula_safe=bool(data.get("formula_safe", True)),
+        )
+        mimetype = "text/plain; charset=utf-8"
+        extension = "tsv" if delimiter == "\t" else "csv" if delimiter in (",", ";") else "txt"
+
+    filename = _export_filename(data.get("name"), extension)
+    response = send_file(
+        io.BytesIO(content), mimetype=mimetype, as_attachment=True, download_name=filename
+    )
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Export-Filename"] = filename
+    response.headers["X-Export-Rows"] = str(len(rows))
+    response.headers["X-Export-Truncated"] = "1" if truncated else "0"
+    return response
 
 
 # --- Saved queries ---------------------------------------------------------

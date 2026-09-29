@@ -55,6 +55,24 @@ export const api = {
   // SQL client
   getSqlSchema: () => request("/sql/schema"),
   executeSql: (sql) => request("/sql/execute", { method: "POST", body: { sql } }),
+  // Returns { blob, filename, rows, truncated } for the caller to save.
+  exportSql: async (payload) => {
+    const res = await fetch(`${BASE}/sql/export`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errorBody = await res.json().catch(() => ({}));
+      throw new Error(errorBody.error || `Request failed (${res.status})`);
+    }
+    return {
+      blob: await res.blob(),
+      filename: res.headers.get("X-Export-Filename") || "hasil-query",
+      rows: Number(res.headers.get("X-Export-Rows")),
+      truncated: res.headers.get("X-Export-Truncated") === "1",
+    };
+  },
   getSavedQueries: () => request("/sql/queries"),
   createSavedQuery: (data) => request("/sql/queries", { method: "POST", body: data }),
   updateSavedQuery: (id, data) => request(`/sql/queries/${id}`, { method: "PUT", body: data }),
