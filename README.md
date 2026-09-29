@@ -23,6 +23,17 @@ overload, deteksi burnout, dan asisten chat AI untuk CRUD tugas secara cepat.
    - `workload Sari minggu ini`
    - `tandai selesai Review kode`
    - `hapus task Review kode`
+7. **SQL Client** — menu untuk menjalankan query ke database aplikasi dan
+   melihat hasilnya dalam tabel. Query yang sering dipakai bisa **disimpan**,
+   dibuka lagi, diubah namanya, atau dihapus. Blok teks di editor bisa
+   dijalankan sendiri, dan `Ctrl/⌘ + Enter` menjalankan query.
+
+   Karena aplikasi belum punya login, SQL Client **read-only secara default**
+   (hanya `SELECT` dan PRAGMA metadata; dipaksa oleh SQLite, bukan sekadar
+   cek teks). Hasil dibatasi 1000 baris dan waktu eksekusi 5 detik. Untuk
+   mengizinkan `INSERT/UPDATE/DELETE/DDL`, set env var
+   `SQL_CLIENT_ALLOW_WRITE=1` di server, dan hanya lakukan itu kalau akses ke
+   aplikasi sudah dibatasi.
 
 ## Menjalankan Backend
 
@@ -77,6 +88,7 @@ backend/
     tasks.py        # Task and task-risk endpoints
     workload.py     # Workload, burnout, and dashboard endpoints
     system.py       # Chat and health endpoints
+    sql.py          # SQL client and saved queries
   requirements.txt
 frontend/
   src/

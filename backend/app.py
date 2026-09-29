@@ -11,6 +11,7 @@ from routes.members import members_bp
 from routes.workload import workload_bp
 from routes.system import system_bp
 from routes.deploy import deploy_bp
+from routes.sql import sql_bp
 
 FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
 
@@ -25,6 +26,7 @@ app.register_blueprint(members_bp)
 app.register_blueprint(workload_bp)
 app.register_blueprint(system_bp)
 app.register_blueprint(deploy_bp)
+app.register_blueprint(sql_bp)
 
 
 @app.route("/", defaults={"path": ""})
