@@ -48,7 +48,7 @@ export const api = {
   // Workload / Burnout / Dashboard
   getWorkload: (period, date) => request("/workload", { query: { period, date } }),
   getBurnout: () => request("/burnout"),
-  getDashboard: () => request("/dashboard"),
+  getDashboard: (date) => request("/dashboard", { query: { date } }),
   getWorkloadDetails: (member_id, period, date) =>
     request("/workload/details", { query: { member_id, period, date } }),
 

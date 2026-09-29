@@ -124,7 +124,8 @@ def get_burnout():
 @workload_bp.get("/api/dashboard")
 def get_dashboard():
     db = get_db()
-    ref_date = date_cls.today()
+    reference_date = request.args.get("date")
+    ref_date = parse_date(reference_date) if reference_date else date_cls.today()
     members = db.execute("SELECT * FROM members ORDER BY name").fetchall()
     status_counts = {"idle": 0, "low": 0, "normal": 0, "padat": 0, "overload": 0}
     member_cards = []

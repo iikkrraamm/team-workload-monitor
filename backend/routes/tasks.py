@@ -100,8 +100,21 @@ def list_tasks():
             "SELECT * FROM tasks WHERE assignee_id = ? AND status != 'done'",
             (assignee["id"],),
         ).fetchall()
-        estimated_remaining = sum(
-            daily_hours_for_task(task, day) for day in daterange(window_start, due)
+        # A done task has no work left to schedule. daily_hours_for_task only
+        # zeroes a task's contribution for days *after* today (it's meant for
+        # historical load totals elsewhere, where a task done today should
+        # still count toward today's actual hours). Reused here for "hours
+        # still needed before the deadline", that same rule made an already-
+        # finished task look like it still needed hours today — while
+        # allocate_tasks_in_window (below) already excludes done tasks from
+        # allocation entirely, leaving 0 hours allocated to it. The mismatch
+        # (needs > 0, allocated = 0) made every done task flip to "tidak
+        # cukup" regardless of how comfortably it actually fit.
+        is_done = (task.get("status") or "").lower() == "done"
+        estimated_remaining = (
+            0.0
+            if is_done
+            else sum(daily_hours_for_task(task, day) for day in daterange(window_start, due))
         )
 
         allocation = allocate_tasks_in_window(

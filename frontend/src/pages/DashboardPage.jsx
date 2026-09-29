@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { api } from "../lib/api";
+import { formatDateInput } from "../lib/dateUtils";
 import Card from "../components/ui/Card";
 import PageHeader from "../components/ui/PageHeader";
 import EmptyState from "../components/ui/EmptyState";
@@ -28,7 +29,11 @@ export default function DashboardPage() {
   const [risky, setRisky] = useState([]);
 
   const load = useCallback(() => {
-    api.getDashboard().then(setData).catch(console.error);
+    // Same idea as WorkloadPage: send the browser's local date explicitly
+    // instead of letting the backend default to the server's own timezone,
+    // so "today" always means the user's today, not the server's.
+    const today = formatDateInput(new Date());
+    api.getDashboard(today).then(setData).catch(console.error);
     api.getRiskyTasks().then(setRisky).catch(() => setRisky([]));
   }, []);
 
