@@ -177,7 +177,7 @@ export default function TasksPage({ members, refreshSignal }) {
           </Button>
         </div>
 
-        <div className="mt-3.5 flex flex-wrap items-center gap-2.5">
+        <div className="mt-3.5 grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center">
           <MultiSelect
             options={memberOptions}
             selected={filterAssignee}
@@ -212,27 +212,24 @@ export default function TasksPage({ members, refreshSignal }) {
             allowCustom
             className="w-full sm:w-44"
           />
-          <div className="relative">
+          <div className="relative col-span-2 sm:col-span-1">
             <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
             <Input
               placeholder="Cari judul/deskripsi..."
               value={filterQ}
               onChange={(e) => setFilterQ(e.target.value)}
-              className="w-48 pl-8"
+              className="w-full pl-8 sm:w-48"
             />
           </div>
-          <label className="flex items-center gap-1.5 text-[12.5px] text-ink-soft">
+          <label className="flex flex-col gap-1 text-[12.5px] text-ink-soft sm:flex-row sm:items-center sm:gap-1.5">
             Due setelah
-            <Input type="date" value={filterDueAfter} onChange={(e) => setFilterDueAfter(e.target.value)} className="w-auto" />
+            <Input type="date" value={filterDueAfter} onChange={(e) => setFilterDueAfter(e.target.value)} className="w-full sm:w-auto" />
           </label>
-          <label className="flex items-center gap-1.5 text-[12.5px] text-ink-soft">
+          <label className="flex flex-col gap-1 text-[12.5px] text-ink-soft sm:flex-row sm:items-center sm:gap-1.5">
             Due sebelum
-            <Input type="date" value={filterDueBefore} onChange={(e) => setFilterDueBefore(e.target.value)} className="w-auto" />
+            <Input type="date" value={filterDueBefore} onChange={(e) => setFilterDueBefore(e.target.value)} className="w-full sm:w-auto" />
           </label>
-          <Button variant="subtle" onClick={load}>
-            Filter
-          </Button>
-          <Button variant="ghost" onClick={resetFilters}>
+          <Button variant="ghost" onClick={resetFilters} className="col-span-2 sm:col-span-1">
             Reset
           </Button>
         </div>
