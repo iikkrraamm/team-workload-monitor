@@ -3,6 +3,11 @@ from datetime import datetime, timedelta, date as date_cls
 from serializers import member_row_to_dict
 
 PRIORITY_WEIGHT = {"low": 1, "medium": 2, "high": 3, "urgent": 4}
+# Task categories that mean time off rather than work. They must not count as
+# load when judging burnout: a leave entered as a task with hours (e.g. 96h
+# over 6 days) reads as 200% "overload" and would raise a take-a-break alert
+# for someone who is already on a break.
+BURNOUT_EXCLUDED_CATEGORIES = ("cuti",)
 LOW_MAX = 30
 NORMAL_MAX = 80
 PADAT_MAX = 100
@@ -242,10 +247,21 @@ def classify_workload(percent, total_hours):
     return "overload"
 
 
-def compute_daily_load(db, member_id, day):
+def _task_category(row):
+    keys = row.keys()
+    value = row["category"] if "category" in keys else None
+    # Legacy rows without a category are regular work.
+    return (value or "kerja").strip().lower()
+
+
+def compute_daily_load(db, member_id, day, exclude_categories=()):
+    """Hours a member is loaded on `day`. Tasks whose category is listed in
+    `exclude_categories` are skipped; by default every task counts."""
     tasks = db.execute(
         "SELECT * FROM tasks WHERE assignee_id = ?", (member_id,)
     ).fetchall()
+    if exclude_categories:
+        tasks = [t for t in tasks if _task_category(t) not in exclude_categories]
     task_hours = sum(daily_hours_for_task(task, day) for task in tasks)
     activities = db.execute(
         "SELECT * FROM activities WHERE member_id = ? AND date = ?",
@@ -415,7 +431,9 @@ def compute_burnout_risk(db, member, ref_date, lookback_days=14):
     capacity = member["capacity_hours_per_day"]
     for offset in range(lookback_days - 1, -1, -1):
         day = ref_date - timedelta(days=offset)
-        hours = compute_daily_load(db, member["id"], day)
+        hours = compute_daily_load(
+            db, member["id"], day, exclude_categories=BURNOUT_EXCLUDED_CATEGORIES
+        )
         percent = round((hours / capacity) * 100, 1) if capacity else 0
         daily_percents.append({"date": day.isoformat(), "percent": percent})
 
