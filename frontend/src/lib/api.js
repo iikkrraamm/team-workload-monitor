@@ -35,6 +35,11 @@ export const api = {
 
   // Tasks
   getTasks: (filters = {}) => request("/tasks", { query: filters }),
+  // Server-side paginated fetch for the List view — returns
+  // { items, total, page, page_size }. Kanban and project-suggestions
+  // keep using getTasks() above, which returns the full filtered set.
+  getTasksPage: (filters = {}, page = 1, pageSize = 20) =>
+    request("/tasks", { query: { ...filters, page, page_size: pageSize } }),
   getRiskyTasks: () => request("/tasks/risk"),
   // Activities (non-task work)
   getActivities: (filters = {}) => request("/activities", { query: filters }),

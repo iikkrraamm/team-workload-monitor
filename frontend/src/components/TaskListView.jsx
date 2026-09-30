@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Copy, Folder } from "lucide-react";
 import { PriorityBadge, CategoryBadge, RiskBadge } from "./ui/Badge";
 import Avatar, { initials } from "./ui/Avatar";
 import EmptyState from "./ui/EmptyState";
 import Button from "./ui/Button";
+import { SkeletonTaskCard, SkeletonTaskRow } from "./ui/Skeleton";
 
 const STATUS_OPTIONS = [
   { value: "todo", label: "Belum Dikerjakan" },
@@ -38,18 +38,40 @@ function QuickSelect({ value, options, onChange, tone }) {
   );
 }
 
-const PAGE_SIZE = 10;
-
-export default function TaskListView({ tasks, memberById, members, onOpen, onCopy, onQuickUpdate }) {
-  const [page, setPage] = useState(1);
-  const pageCount = Math.max(1, Math.ceil(tasks.length / PAGE_SIZE));
-
-  // Filters/search change the underlying task list constantly — always land
-  // back on page 1 so you don't get stranded on an now-empty page.
-  useEffect(() => setPage(1), [tasks.length]);
-
-  const safePage = Math.min(page, pageCount);
-  const pageItems = tasks.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+export default function TaskListView({
+  tasks,
+  memberById,
+  loading,
+  page,
+  pageCount,
+  total,
+  onPageChange,
+  onOpen,
+  onCopy,
+  onQuickUpdate,
+}) {
+  // Loading vs. genuinely empty must look different, or a slow network and
+  // "no tasks match this filter" are indistinguishable to the user.
+  if (loading) {
+    return (
+      <div>
+        <div className="hidden overflow-hidden rounded-2xl border border-line/70 bg-white md:block">
+          <table className="w-full text-left text-[13px]">
+            <tbody>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonTaskRow key={i} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="space-y-2.5 md:hidden">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonTaskCard key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (tasks.length === 0) return <EmptyState>Tidak ada tugas</EmptyState>;
 
@@ -71,7 +93,7 @@ export default function TaskListView({ tasks, memberById, members, onOpen, onCop
             </tr>
           </thead>
           <tbody>
-            {pageItems.map((t) => {
+            {tasks.map((t) => {
               const assignee = memberById[t.assignee_id];
               return (
                 <tr
@@ -142,7 +164,7 @@ export default function TaskListView({ tasks, memberById, members, onOpen, onCop
 
       {/* Mobile: stacked cards */}
       <div className="space-y-2.5 md:hidden">
-        {pageItems.map((t) => {
+        {tasks.map((t) => {
           const assignee = memberById[t.assignee_id];
           return (
             <div key={t.id} className="rounded-xl border border-line/70 bg-white p-3.5">
@@ -207,22 +229,17 @@ export default function TaskListView({ tasks, memberById, members, onOpen, onCop
       {pageCount > 1 && (
         <div className="mt-4 flex items-center justify-between">
           <span className="text-[12.5px] text-ink-soft">
-            {tasks.length} tugas · Halaman {safePage} dari {pageCount}
+            {total} tugas · Halaman {page} dari {pageCount}
           </span>
           <div className="flex items-center gap-1.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={safePage <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
+            <Button variant="ghost" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
               <ChevronLeft size={15} />
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              disabled={safePage >= pageCount}
-              onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+              disabled={page >= pageCount}
+              onClick={() => onPageChange(page + 1)}
             >
               <ChevronRight size={15} />
             </Button>

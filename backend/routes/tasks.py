@@ -62,8 +62,28 @@ def list_tasks():
         search = f"%{request.args.get('q')}%"
         query += " AND (title LIKE ? OR description LIKE ? OR project LIKE ?)"
         params.extend([search, search, search])
+
+    # Count against the same WHERE clause, before ORDER BY/LIMIT are added.
+    total = db.execute(query.replace("SELECT *", "SELECT COUNT(*)", 1), params).fetchone()[0]
+
     query += " ORDER BY due_date ASC"
-    rows = db.execute(query, params).fetchall()
+
+    # Pagination is opt-in via ?page — callers that need the full filtered
+    # set regardless of "page" (the Kanban board, the risk-scan endpoint,
+    # the project-suggestions list) simply don't pass it and keep getting a
+    # bare array like before. This also means the expensive per-task
+    # deadline/risk computation below only runs for the rows on the
+    # requested page instead of every matching task, which is the main
+    # performance win for large task lists.
+    page = request.args.get("page", type=int)
+    exec_params = params
+    if page is not None:
+        page = max(1, page)
+        page_size = max(1, min(request.args.get("page_size", type=int) or 20, 100))
+        query += " LIMIT ? OFFSET ?"
+        exec_params = params + [page_size, (page - 1) * page_size]
+
+    rows = db.execute(query, exec_params).fetchall()
     results = []
 
     for row in rows:
@@ -186,6 +206,8 @@ def list_tasks():
                 })
         results.append(task)
 
+    if page is not None:
+        return jsonify({"items": results, "total": total, "page": page, "page_size": page_size})
     return jsonify(results)
 
 
