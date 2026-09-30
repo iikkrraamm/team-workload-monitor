@@ -5,14 +5,12 @@ import { formatDateInput } from "../lib/dateUtils";
 import Card from "../components/ui/Card";
 import PageHeader from "../components/ui/PageHeader";
 import Button from "../components/ui/Button";
-import EmptyState from "../components/ui/EmptyState";
 import { Input } from "../components/ui/Field";
 import MultiSelect from "../components/ui/MultiSelect";
 import SegmentedControl from "../components/ui/SegmentedControl";
-import TaskCard from "../components/TaskCard";
+import KanbanColumn from "../components/KanbanColumn";
 import TaskModal from "../components/TaskModal";
 import TaskListView from "../components/TaskListView";
-import { SkeletonTaskCard } from "../components/ui/Skeleton";
 
 const VIEW_STORAGE_KEY = "tasks-view-mode";
 const LIST_PAGE_SIZE = 20;
@@ -87,10 +85,6 @@ export default function TasksPage({ members, refreshSignal }) {
     return () => clearTimeout(t);
   }, [filterQ]);
 
-  // Kanban data (full filtered set — a kanban board isn't paginated).
-  const [tasks, setTasks] = useState([]);
-  const [kanbanLoading, setKanbanLoading] = useState(true);
-
   // List data (server-paginated).
   const [listTasks, setListTasks] = useState([]);
   const [listTotal, setListTotal] = useState(0);
@@ -123,31 +117,8 @@ export default function TasksPage({ members, refreshSignal }) {
   // down to one page.
   useEffect(() => setListPage(1), [filterKey]);
 
-  // Fetch only the data the visible view actually needs — switching to List
-  // stops re-fetching the full Kanban set on every filter change, and vice
-  // versa, instead of loading both every time.
-  useEffect(() => {
-    if (viewMode !== "kanban") return undefined;
-    let cancelled = false;
-    setKanbanLoading(true);
-    api
-      .getTasks(filterParams())
-      .then((data) => {
-        if (cancelled) return;
-        setTasks(data);
-        setKanbanLoading(false);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          console.error(err);
-          setKanbanLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, filterKey, refreshSignal, reloadTick]);
+  // Fetch List data only while that view is active — Kanban's three columns
+  // fetch independently inside KanbanColumn itself.
 
   useEffect(() => {
     if (viewMode !== "list") return undefined;
@@ -358,41 +329,21 @@ export default function TasksPage({ members, refreshSignal }) {
 
       {viewMode === "kanban" ? (
         <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2 snap-x snap-mandatory md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0">
-          {COLUMNS.map((col) => {
-            const colTasks = tasks.filter((t) => t.status === col.key);
-            return (
-              <div key={col.key} className="w-[85vw] shrink-0 snap-start md:w-auto md:shrink">
-                <div className="mb-3 flex items-center gap-2 text-[13px] font-semibold text-ink-soft">
-                  {col.label}
-                  <span className="rounded-full bg-ink/[0.06] px-2 py-0.5 text-[11px] text-ink-soft">
-                    {kanbanLoading ? "…" : colTasks.length}
-                  </span>
-                </div>
-                {kanbanLoading ? (
-                  <>
-                    <SkeletonTaskCard />
-                    <SkeletonTaskCard />
-                  </>
-                ) : (
-                  <>
-                    {colTasks.map((t) => (
-                      <TaskCard
-                        key={t.id}
-                        task={t}
-                        assignee={memberById[t.assignee_id]}
-                        columns={COLUMNS}
-                        currentStatus={col.key}
-                        onOpen={() => setFormTask(t)}
-                        onMove={(newStatus) => moveTask(t, newStatus)}
-                        onCopy={openCopy}
-                      />
-                    ))}
-                    {colTasks.length === 0 && <EmptyState>Tidak ada tugas</EmptyState>}
-                  </>
-                )}
-              </div>
-            );
-          })}
+          {COLUMNS.map((col) => (
+            <div key={col.key} className="w-[85vw] shrink-0 snap-start md:w-auto md:shrink">
+              <KanbanColumn
+                statusKey={col.key}
+                label={col.label}
+                filters={filterParams()}
+                reloadTick={reloadTick}
+                columns={COLUMNS}
+                memberById={memberById}
+                onOpen={(t) => setFormTask(t)}
+                onMove={moveTask}
+                onCopy={openCopy}
+              />
+            </div>
+          ))}
         </div>
       ) : (
         <TaskListView
