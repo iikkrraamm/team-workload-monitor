@@ -2,6 +2,7 @@ import clsx from "clsx";
 import { Copy, Folder } from "lucide-react";
 import { initials } from "./ui/Avatar";
 import { PriorityBadge, CategoryBadge, RiskBadge } from "./ui/Badge";
+import { ScheduleBadge, ShouldBeProgress } from "./ScheduleInfo";
 
 export default function TaskCard({ task, assignee, columns, currentStatus, onOpen, onMove, onCopy }) {
   const t = task;
@@ -63,6 +64,16 @@ export default function TaskCard({ task, assignee, columns, currentStatus, onOpe
           <span>Tidak ada deadline</span>
         )}
       </div>
+
+      {t.schedule && (
+        <div className="mt-2.5">
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <ScheduleBadge schedule={t.schedule} />
+          </div>
+          <ShouldBeProgress schedule={t.schedule} />
+          <div className="mt-1 text-[11px] leading-snug text-ink-faint">{t.schedule.reason}</div>
+        </div>
+      )}
 
       <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-ink-soft">
         <span>

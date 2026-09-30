@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, Copy, Folder } from "lucide-react";
 import { PriorityBadge, CategoryBadge, RiskBadge } from "./ui/Badge";
+import { ScheduleBadge, ShouldBeProgress } from "./ScheduleInfo";
 import Avatar, { initials } from "./ui/Avatar";
 import EmptyState from "./ui/EmptyState";
 import Button from "./ui/Button";
@@ -87,6 +88,7 @@ export default function TaskListView({
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium">Prioritas</th>
               <th className="px-4 py-3 font-medium">Due</th>
+              <th className="px-4 py-3 font-medium">Jadwal</th>
               <th className="px-4 py-3 font-medium">Estimasi</th>
               <th className="px-4 py-3 font-medium">Risiko</th>
               <th className="px-4 py-3 font-medium" />
@@ -139,6 +141,16 @@ export default function TaskListView({
                     />
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-ink-soft">{t.due_date}</td>
+                  <td className="min-w-[130px] px-4 py-3">
+                    {t.schedule ? (
+                      <div className="space-y-1.5">
+                        <ScheduleBadge schedule={t.schedule} />
+                        <ShouldBeProgress schedule={t.schedule} />
+                      </div>
+                    ) : (
+                      <span className="text-[12.5px] text-ink-faint">—</span>
+                    )}
+                  </td>
                   <td className="whitespace-nowrap px-4 py-3 text-ink-soft">{t.estimated_hours}h</td>
                   <td className="px-4 py-3">
                     <RiskBadge risk={t.deadline?.risk} />
@@ -173,6 +185,7 @@ export default function TaskListView({
                   <PriorityBadge priority={t.priority} />
                   <CategoryBadge category={t.category} />
                   <RiskBadge risk={t.deadline?.risk} />
+                  <ScheduleBadge schedule={t.schedule} />
                 </div>
                 <div className="mt-1.5 text-[14px] font-medium leading-snug text-ink">{t.title}</div>
                 {t.project && (
@@ -195,6 +208,11 @@ export default function TaskListView({
                   <span>· Due {t.due_date}</span>
                   <span>· {t.estimated_hours}h</span>
                 </div>
+                {t.schedule && (
+                  <div className="mt-2">
+                    <ShouldBeProgress schedule={t.schedule} />
+                  </div>
+                )}
               </div>
 
               <div className="mt-3 flex items-center gap-2 border-t border-line pt-2.5">
