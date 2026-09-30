@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Search, LayoutGrid, List } from "lucide-react";
 import { api } from "../lib/api";
 import { formatDateInput } from "../lib/dateUtils";
@@ -12,8 +12,11 @@ import SegmentedControl from "../components/ui/SegmentedControl";
 import TaskCard from "../components/TaskCard";
 import TaskModal from "../components/TaskModal";
 import TaskListView from "../components/TaskListView";
+import { SkeletonTaskCard } from "../components/ui/Skeleton";
 
 const VIEW_STORAGE_KEY = "tasks-view-mode";
+const LIST_PAGE_SIZE = 20;
+const SEARCH_DEBOUNCE_MS = 300;
 
 const VIEW_OPTIONS = [
   {
@@ -59,8 +62,6 @@ const CATEGORY_OPTIONS = [
 const onlyValue = (arr) => (arr.length === 1 ? arr[0] : undefined);
 
 export default function TasksPage({ members, refreshSignal }) {
-  const [tasks, setTasks] = useState([]);
-  const [allProjects, setAllProjects] = useState([]);
   const [viewMode, setViewMode] = useState(() => {
     try {
       return localStorage.getItem(VIEW_STORAGE_KEY) === "list" ? "list" : "kanban";
@@ -68,6 +69,7 @@ export default function TasksPage({ members, refreshSignal }) {
       return "kanban";
     }
   });
+
   const [filterAssignee, setFilterAssignee] = useState([]);
   const [filterPriority, setFilterPriority] = useState([]);
   const [filterCategory, setFilterCategory] = useState([]);
@@ -75,43 +77,116 @@ export default function TasksPage({ members, refreshSignal }) {
   const [filterQ, setFilterQ] = useState("");
   const [filterDueBefore, setFilterDueBefore] = useState("");
   const [filterDueAfter, setFilterDueAfter] = useState("");
+
+  // Debounced so fast typing in the search box doesn't fire a server
+  // request per keystroke — both views now hit the server on every filter
+  // change, so this matters more than it did with client-side filtering.
+  const [debouncedQ, setDebouncedQ] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(filterQ), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [filterQ]);
+
+  // Kanban data (full filtered set — a kanban board isn't paginated).
+  const [tasks, setTasks] = useState([]);
+  const [kanbanLoading, setKanbanLoading] = useState(true);
+
+  // List data (server-paginated).
+  const [listTasks, setListTasks] = useState([]);
+  const [listTotal, setListTotal] = useState(0);
+  const [listPage, setListPage] = useState(1);
+  const [listLoading, setListLoading] = useState(true);
+
+  const [allProjects, setAllProjects] = useState([]);
   const [formTask, setFormTask] = useState(null);
   const [quickTitle, setQuickTitle] = useState("");
+  // Bumped after any create/update/delete to trigger a refetch of whichever
+  // view is currently active (see the two data-loading effects below).
+  const [reloadTick, setReloadTick] = useState(0);
+  const bump = () => setReloadTick((n) => n + 1);
 
-  const load = useCallback(() => {
+  const filterParams = () => {
     const f = {};
     if (filterAssignee.length) f.assignee_id = filterAssignee;
     if (filterPriority.length) f.priority = filterPriority;
     if (filterCategory.length) f.category = filterCategory;
     if (filterProject.length) f.project = filterProject;
-    if (filterQ) f.q = filterQ;
+    if (debouncedQ) f.q = debouncedQ;
     if (filterDueBefore) f.due_before = filterDueBefore;
     if (filterDueAfter) f.due_after = filterDueAfter;
-    api.getTasks(f).then(setTasks).catch(console.error);
-  }, [filterAssignee, filterPriority, filterCategory, filterProject, filterQ, filterDueBefore, filterDueAfter]);
+    return f;
+  };
+  const filterKey = JSON.stringify(filterParams());
 
-  // Project suggestions must come from ALL tasks, not the filtered list —
-  // otherwise filtering by one project would hide every other suggestion.
-  const loadProjects = useCallback(() => {
+  // Any filter changing invalidates the list's current page — without this
+  // you could be stuck on "page 4" after a filter narrows the result set
+  // down to one page.
+  useEffect(() => setListPage(1), [filterKey]);
+
+  // Fetch only the data the visible view actually needs — switching to List
+  // stops re-fetching the full Kanban set on every filter change, and vice
+  // versa, instead of loading both every time.
+  useEffect(() => {
+    if (viewMode !== "kanban") return undefined;
+    let cancelled = false;
+    setKanbanLoading(true);
+    api
+      .getTasks(filterParams())
+      .then((data) => {
+        if (cancelled) return;
+        setTasks(data);
+        setKanbanLoading(false);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error(err);
+          setKanbanLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, filterKey, refreshSignal, reloadTick]);
+
+  useEffect(() => {
+    if (viewMode !== "list") return undefined;
+    let cancelled = false;
+    setListLoading(true);
+    api
+      .getTasksPage(filterParams(), listPage, LIST_PAGE_SIZE)
+      .then((data) => {
+        if (cancelled) return;
+        setListTasks(data.items);
+        setListTotal(data.total);
+        setListLoading(false);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error(err);
+          setListLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, filterKey, listPage, refreshSignal, reloadTick]);
+
+  // Project suggestions must come from ALL tasks, not the filtered/paginated
+  // list — otherwise filtering by one project would hide every other
+  // suggestion, or a later page would be needed to discover them.
+  useEffect(() => {
     api
       .getTasks({})
-      .then((all) =>
-        setAllProjects([...new Set(all.map((t) => t.project).filter(Boolean))].sort())
-      )
+      .then((all) => setAllProjects([...new Set(all.map((t) => t.project).filter(Boolean))].sort()))
       .catch(console.error);
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load, refreshSignal]);
-
-  useEffect(() => {
-    loadProjects();
-  }, [loadProjects, refreshSignal]);
+  }, [refreshSignal, reloadTick]);
 
   const memberById = Object.fromEntries(members.map((m) => [m.id, m]));
   const memberOptions = members.map((m) => ({ value: m.id, label: m.name }));
   const projectOptions = allProjects.map((p) => ({ value: p, label: p }));
+  const listPageCount = Math.max(1, Math.ceil(listTotal / LIST_PAGE_SIZE));
 
   const buildDefaultDraft = () => ({
     title: "",
@@ -147,23 +222,20 @@ export default function TasksPage({ members, refreshSignal }) {
       estimated_hours: 3,
     });
     setQuickTitle("");
-    load();
-    loadProjects();
+    bump();
   };
 
   const handleSave = async (form) => {
     if (form.id) await api.updateTask(form.id, form);
     else await api.createTask(form);
     setFormTask(null);
-    load();
-    loadProjects();
+    bump();
   };
 
   const handleDelete = async (id) => {
     await api.deleteTask(id);
     setFormTask(null);
-    load();
-    loadProjects();
+    bump();
   };
 
   const changeView = (mode) => {
@@ -178,13 +250,13 @@ export default function TasksPage({ members, refreshSignal }) {
 
   const moveTask = async (task, newStatus) => {
     await api.updateTask(task.id, { status: newStatus });
-    load();
+    bump();
   };
 
   // Inline edits from the list view (status/priority dropdowns).
   const quickUpdate = async (taskId, patch) => {
     await api.updateTask(taskId, patch);
-    load();
+    bump();
   };
 
   const resetFilters = () => {
@@ -293,31 +365,44 @@ export default function TasksPage({ members, refreshSignal }) {
                 <div className="mb-3 flex items-center gap-2 text-[13px] font-semibold text-ink-soft">
                   {col.label}
                   <span className="rounded-full bg-ink/[0.06] px-2 py-0.5 text-[11px] text-ink-soft">
-                    {colTasks.length}
+                    {kanbanLoading ? "…" : colTasks.length}
                   </span>
                 </div>
-                {colTasks.map((t) => (
-                  <TaskCard
-                    key={t.id}
-                    task={t}
-                    assignee={memberById[t.assignee_id]}
-                    columns={COLUMNS}
-                    currentStatus={col.key}
-                    onOpen={() => setFormTask(t)}
-                    onMove={(newStatus) => moveTask(t, newStatus)}
-                    onCopy={openCopy}
-                  />
-                ))}
-                {colTasks.length === 0 && <EmptyState>Tidak ada tugas</EmptyState>}
+                {kanbanLoading ? (
+                  <>
+                    <SkeletonTaskCard />
+                    <SkeletonTaskCard />
+                  </>
+                ) : (
+                  <>
+                    {colTasks.map((t) => (
+                      <TaskCard
+                        key={t.id}
+                        task={t}
+                        assignee={memberById[t.assignee_id]}
+                        columns={COLUMNS}
+                        currentStatus={col.key}
+                        onOpen={() => setFormTask(t)}
+                        onMove={(newStatus) => moveTask(t, newStatus)}
+                        onCopy={openCopy}
+                      />
+                    ))}
+                    {colTasks.length === 0 && <EmptyState>Tidak ada tugas</EmptyState>}
+                  </>
+                )}
               </div>
             );
           })}
         </div>
       ) : (
         <TaskListView
-          tasks={tasks}
+          tasks={listTasks}
           memberById={memberById}
-          members={members}
+          loading={listLoading}
+          page={listPage}
+          pageCount={listPageCount}
+          total={listTotal}
+          onPageChange={setListPage}
           onOpen={(t) => setFormTask(t)}
           onCopy={openCopy}
           onQuickUpdate={quickUpdate}
