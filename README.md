@@ -152,6 +152,24 @@ frontend/
 - Risiko burnout dihitung dari 14 hari data historis (dihitung ulang dari
   tugas yang overlap tiap tanggal), bukan snapshot tersimpan — jadi selalu
   konsisten dengan data tugas terbaru.
+- **Status jadwal tugas** (Kanban dan List, hanya tugas `todo` / `in_progress`;
+  tugas selesai dan cuti tidak dinilai):
+  - *Seharusnya* (should-be progress) = hari yang sudah berjalan ÷ jumlah hari
+    dari `start_date` sampai `due_date` × 100%, dengan hari kalender (akhir
+    pekan ikut) seperti pembagian jam. Start tanggal 1 dan due tanggal 4 →
+    25% / 50% / 75% / 100% pada tanggal 1 / 2 / 3 / 4. Sebelum start 0%,
+    setelah due 100%.
+  - **Lewat deadline**: due date sudah lewat dan tugas belum selesai.
+  - **Terlambat**: masih `todo` padahal hari mulainya sudah lewat (hari
+    pertama berlalu tanpa dimulai).
+  - **On track**: selain itu (sedang dikerjakan, atau `todo` yang baru akan
+    atau baru mulai hari ini).
+  - Belum ada data progres aktual (persen selesai), jadi penilaiannya memakai
+    status dan tanggal saja; tugas `in_progress` baru dinilai terlambat setelah
+    lewat deadline.
+  - API: `/api/tasks` menambah field `schedule` per tugas. Parameter opsional
+    `date=YYYY-MM-DD` menentukan "hari ini" (frontend mengirim tanggal lokal
+    pengguna); tanpa itu dipakai tanggal server.
 - **Tugas Berisiko (Tidak Cukup Jam)** — tiap tugas dinilai *cukup* / *tidak
   cukup* dengan membandingkan sisa kapasitas anggota sampai deadline dengan jam
   yang masih dibutuhkan. Tugas yang sudah **selesai** dan tugas berkategori

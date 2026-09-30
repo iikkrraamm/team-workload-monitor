@@ -13,6 +13,7 @@ from workload import (
     is_exempt_from_deadline_risk,
     parse_date,
     task_row_to_dict as _task_row_to_dict,
+    task_schedule_status,
 )
 
 
@@ -85,9 +86,17 @@ def list_tasks():
 
     rows = db.execute(query, exec_params).fetchall()
     results = []
+    # The schedule check is relative to a calendar day. Callers can pass the
+    # user's local date (?date=YYYY-MM-DD) so it isn't off by one around
+    # midnight when the server runs in another time zone; invalid or missing
+    # values fall back to the server's today.
+    schedule_date = parse_date(request.args.get("date")) or date_cls.today()
 
     for row in rows:
         task = _task_row_to_dict(row)
+        # Independent of assignee/capacity, so attach it before any of the
+        # early exits below.
+        task["schedule"] = task_schedule_status(task, schedule_date)
         try:
             due = parse_date(task["due_date"])
         except Exception:

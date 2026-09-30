@@ -8,6 +8,8 @@ PRIORITY_WEIGHT = {"low": 1, "medium": 2, "high": 3, "urgent": 4}
 # over 6 days) reads as 200% "overload" and would raise a take-a-break alert
 # for someone who is already on a break.
 BURNOUT_EXCLUDED_CATEGORIES = ("cuti",)
+# Statuses that still have work ahead of them (everything except "done").
+ACTIVE_TASK_STATUSES = ("todo", "in_progress")
 
 
 def is_leave_task(task):
@@ -207,6 +209,98 @@ def task_contribution(task, start, end):
         "prorated": span_start < start or span_due > end,
         "done_cutoff": is_done and len(counted_days) < len(overlap),
         "per_day": {k: round(v, 4) for k, v in per_day.items() if v},
+    }
+
+
+def planned_progress(start, due, ref_date):
+    """How far along a task should be at the end of `ref_date` when its work
+    is spread evenly over every calendar day from start to due, both
+    included (the same spreading the workload hours use). Start on the 1st,
+    due on the 4th gives 25 / 50 / 75 / 100 on the 1st..4th; it is 0 before
+    the start and 100 once the due date has passed.
+
+    Returns (elapsed_days, span_days, percent)."""
+    span_days = count_days(start, due)
+    if ref_date < start:
+        elapsed = 0
+    elif ref_date > due:
+        elapsed = span_days
+    else:
+        elapsed = (ref_date - start).days + 1
+    return elapsed, span_days, round(elapsed / span_days * 100, 1)
+
+
+def task_schedule_status(task, ref_date):
+    """Where an unfinished task stands against its schedule on `ref_date`.
+
+    Only todo / in_progress tasks are judged; done tasks, leave (cuti) and
+    tasks without usable dates return None.
+
+    There is no record of how much of a task is actually done, only its
+    status, so the verdict is based on status plus dates:
+
+    * lewat_deadline: the due date has passed and the task isn't done.
+    * terlambat:      still "todo" although its scheduled start day has
+                      already passed (the first day of work is over and
+                      nothing was started).
+    * on_track:       everything else: in progress, or still todo on (or
+                      before) its start day.
+
+    `should_be_progress` is the planned progress for that day (see
+    planned_progress) so a screen can show what is expected today.
+    """
+    status = (task.get("status") or "").strip().lower()
+    if status not in ACTIVE_TASK_STATUSES or is_leave_task(task):
+        return None
+    span = task_span(task)
+    if span is None:
+        return None
+    start, due = span
+    elapsed, span_days, should_be = planned_progress(start, due, ref_date)
+
+    days_until_due = (due - ref_date).days          # 0 = due today, < 0 = overdue
+    days_overdue = max(-days_until_due, 0)
+    days_late_start = (ref_date - start).days if status == "todo" and ref_date > start else 0
+
+    if ref_date > due:
+        state = "lewat_deadline"
+        reason = f"Lewat deadline {days_overdue} hari (due {due.isoformat()})."
+    elif days_late_start > 0:
+        state = "terlambat"
+        reason = (
+            f"Belum dimulai padahal dijadwalkan sejak {start.isoformat()} "
+            f"({days_late_start} hari lalu); seharusnya sudah {should_be:g}%."
+        )
+    else:
+        state = "on_track"
+        if ref_date < start:
+            ahead = (start - ref_date).days
+            reason = f"Dijadwalkan mulai {start.isoformat()} ({ahead} hari lagi)."
+        elif status == "todo":
+            reason = (
+                "Belum dimulai, deadline hari ini."
+                if ref_date == due
+                else "Dijadwalkan mulai hari ini."
+            )
+        elif ref_date == due:
+            reason = "Sedang dikerjakan, deadline hari ini."
+        else:
+            reason = (
+                f"Sedang dikerjakan sesuai jadwal: seharusnya {should_be:g}% "
+                f"(hari {elapsed} dari {span_days})."
+            )
+
+    return {
+        "state": state,
+        "should_be_progress": should_be,
+        "elapsed_days": elapsed,
+        "span_days": span_days,
+        "start_date": start.isoformat(),
+        "due_date": due.isoformat(),
+        "days_until_due": days_until_due,
+        "days_overdue": days_overdue,
+        "days_late_start": days_late_start,
+        "reason": reason,
     }
 
 

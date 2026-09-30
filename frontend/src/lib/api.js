@@ -1,3 +1,5 @@
+import { formatDateInput } from "./dateUtils";
+
 const BASE = "/api";
 
 function buildUrl(path, query) {
@@ -34,12 +36,17 @@ export const api = {
   deleteMember: (id) => request(`/members/${id}`, { method: "DELETE" }),
 
   // Tasks
-  getTasks: (filters = {}) => request("/tasks", { query: filters }),
+  // `date` = the user's local today, used for the schedule check (should-be
+  // progress / on track / late). Callers can still override it.
+  getTasks: (filters = {}) =>
+    request("/tasks", { query: { date: formatDateInput(new Date()), ...filters } }),
   // Server-side paginated fetch for the List view — returns
   // { items, total, page, page_size }. Kanban and project-suggestions
   // keep using getTasks() above, which returns the full filtered set.
   getTasksPage: (filters = {}, page = 1, pageSize = 20) =>
-    request("/tasks", { query: { ...filters, page, page_size: pageSize } }),
+    request("/tasks", {
+      query: { date: formatDateInput(new Date()), ...filters, page, page_size: pageSize },
+    }),
   getRiskyTasks: () => request("/tasks/risk"),
   // Activities (non-task work)
   getActivities: (filters = {}) => request("/activities", { query: filters }),

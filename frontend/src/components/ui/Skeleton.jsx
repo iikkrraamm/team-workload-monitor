@@ -41,6 +41,9 @@ export function SkeletonTaskRow() {
         <SkeletonBlock className="h-4 w-20" />
       </td>
       <td className="px-4 py-3">
+        <SkeletonBlock className="h-5 w-20 rounded-full" />
+      </td>
+      <td className="px-4 py-3">
         <SkeletonBlock className="h-4 w-10" />
       </td>
       <td className="px-4 py-3">
