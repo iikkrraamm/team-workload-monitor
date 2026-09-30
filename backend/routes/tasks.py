@@ -10,6 +10,7 @@ from workload import (
     count_capacity_days,
     daily_hours_for_task,
     daterange,
+    is_exempt_from_deadline_risk,
     parse_date,
     task_row_to_dict as _task_row_to_dict,
 )
@@ -128,7 +129,12 @@ def list_tasks():
             db, assignee["id"], assigned_tasks, window_start, due, capacity
         )
         assigned_total = capacity_total - available_hours
-        if available_hours < 0 or allocated_task_hours < estimated_remaining:
+        # Finished and leave tasks are not rated at all (risk stays None) so
+        # they get no badge, no suggestions and never reach the risky list.
+        # Their numbers below are still reported.
+        if is_exempt_from_deadline_risk(task):
+            risk = None
+        elif available_hours < 0 or allocated_task_hours < estimated_remaining:
             risk = "tidak_cukup"
         else:
             risk = "cukup"
@@ -188,7 +194,7 @@ def list_risky_tasks():
     all_tasks = list_tasks().get_json()
     risky_tasks = [
         task for task in all_tasks
-        if task.get("status") != "done"
+        if not is_exempt_from_deadline_risk(task)
         and task.get("deadline")
         and task["deadline"].get("risk") == "tidak_cukup"
     ]

@@ -136,6 +136,15 @@ frontend/
 - Risiko burnout dihitung dari 14 hari data historis (dihitung ulang dari
   tugas yang overlap tiap tanggal), bukan snapshot tersimpan — jadi selalu
   konsisten dengan data tugas terbaru.
+- **Tugas Berisiko (Tidak Cukup Jam)** — tiap tugas dinilai *cukup* / *tidak
+  cukup* dengan membandingkan sisa kapasitas anggota sampai deadline dengan jam
+  yang masih dibutuhkan. Tugas yang sudah **selesai** dan tugas berkategori
+  **Cuti/Libur** tidak dinilai: tidak mendapat badge risiko, tidak muncul di
+  daftar Tugas Berisiko, dan tidak dibuatkan saran reassign. Perhatikan bahwa
+  jam cuti tetap memakai kapasitas anggota tersebut, karena orang yang cuti
+  memang tidak bisa mengerjakan tugas lain di hari itu, sehingga tugas kerja di
+  periode yang sama tetap bisa ditandai berisiko. Tugas selesai tidak memakan
+  kapasitas sama sekali.
 
 ## Mengembangkan Lebih Lanjut
 
