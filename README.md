@@ -129,6 +129,17 @@ frontend/
   disebar merata per hari dalam rentang tersebut.
 - Workload periode = total jam tugas aktif dalam periode ÷ (kapasitas jam/hari
   anggota × jumlah hari periode) × 100%.
+- **Rincian kontribusi** (tombol di halaman Analisis Beban) menjumlah persis ke
+  angka "jam terpakai" pada kartu, karena memakai aturan hitung yang sama:
+  estimasi tiap tugas dibagi rata ke semua hari kalender dari `start_date`
+  sampai `due_date` (akhir pekan ikut dihitung), lalu hanya hari yang masuk
+  periode yang dijumlahkan, ditambah jam aktivitas. Untuk tugas dengan deadline
+  lebih panjang dari periode, rincian menampilkan estimasi, jumlah hari
+  pembagi, jam per hari, jumlah hari di periode, dan sisa jam di luar periode.
+  Tugas cuti dan tugas selesai tampil dengan penanda; tugas selesai hanya
+  dihitung sampai hari ini. Hari akhir pekan menambah jam terpakai bila ada
+  tugas yang rentangnya melewatinya, tetapi kapasitas hanya menghitung hari
+  kerja (kecuali ada tugas yang deadline-nya jatuh di akhir pekan).
 - Saran overload (halaman Analisis Beban) memprioritaskan tugas dengan prioritas
   terendah untuk dipindah lebih dulu. Hanya tugas kerja yang belum selesai yang
   bisa disarankan: tugas **Cuti/Libur** dan tugas **selesai** tidak pernah masuk
