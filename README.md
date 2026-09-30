@@ -129,10 +129,15 @@ frontend/
   disebar merata per hari dalam rentang tersebut.
 - Workload periode = total jam tugas aktif dalam periode ÷ (kapasitas jam/hari
   anggota × jumlah hari periode) × 100%.
-- Saran overload memprioritaskan tugas dengan prioritas terendah untuk
-  dipindah lebih dulu, dan mencari rekan tim dengan status Idle/Normal yang
-  punya slack kapasitas cukup sebelum menyarankan reassign; jika tidak ada,
-  menyarankan reschedule deadline.
+- Saran overload (halaman Analisis Beban) memprioritaskan tugas dengan prioritas
+  terendah untuk dipindah lebih dulu. Hanya tugas kerja yang belum selesai yang
+  bisa disarankan: tugas **Cuti/Libur** dan tugas **selesai** tidak pernah masuk
+  saran. Reassign hanya ke rekan dengan **peran yang sama** (dicocokkan tanpa
+  membedakan huruf besar/kecil dan spasi; anggota tanpa peran dianggap tidak
+  punya rekan seperan) yang berstatus Idle/Normal dan punya slack kapasitas
+  cukup. Jika tidak ada yang memenuhi, sistem menyarankan reschedule deadline.
+  Jam cuti dan tugas selesai tetap ikut dihitung dalam persentase beban itu
+  sendiri, hanya saja keduanya tidak bisa dipindahkan.
 - Risiko burnout dihitung dari 14 hari data historis (dihitung ulang dari
   tugas yang overlap tiap tanggal), bukan snapshot tersimpan — jadi selalu
   konsisten dengan data tugas terbaru.
