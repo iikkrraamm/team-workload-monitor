@@ -45,15 +45,19 @@ export default function TaskCard({ task, assignee, columns, currentStatus, onOpe
             <span>
               {t.deadline.window_start} → {t.deadline.due_date}
             </span>
-            <span
-              className={clsx(
-                t.deadline.available_hours < 0 ? "font-semibold text-status-overload" : "text-ink-soft"
-              )}
-            >
-              {t.deadline.available_hours < 0
-                ? `Kekurangan ${Math.abs(t.deadline.available_hours)}h`
-                : `${t.deadline.available_hours}h tersedia`}
-            </span>
+            {/* Done and leave tasks come back with risk = null: they aren't rated,
+                so don't show a capacity shortfall for them either. */}
+            {t.deadline.risk && (
+              <span
+                className={clsx(
+                  t.deadline.available_hours < 0 ? "font-semibold text-status-overload" : "text-ink-soft"
+                )}
+              >
+                {t.deadline.available_hours < 0
+                  ? `Kekurangan ${Math.abs(t.deadline.available_hours)}h`
+                  : `${t.deadline.available_hours}h tersedia`}
+              </span>
+            )}
           </>
         ) : (
           <span>Tidak ada deadline</span>

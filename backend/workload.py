@@ -8,6 +8,17 @@ PRIORITY_WEIGHT = {"low": 1, "medium": 2, "high": 3, "urgent": 4}
 # over 6 days) reads as 200% "overload" and would raise a take-a-break alert
 # for someone who is already on a break.
 BURNOUT_EXCLUDED_CATEGORIES = ("cuti",)
+
+
+def is_exempt_from_deadline_risk(task):
+    """True for tasks that must not be judged as "enough / not enough hours":
+    finished work (nothing left to schedule) and leave (time off is not a
+    deliverable that can miss a deadline). `task` is a dict from
+    task_row_to_dict. Note this only stops the task itself from being rated
+    and listed; it doesn't change how much capacity it uses up."""
+    status = (task.get("status") or "").strip().lower()
+    category = (task.get("category") or "kerja").strip().lower()
+    return status == "done" or category in BURNOUT_EXCLUDED_CATEGORIES
 LOW_MAX = 30
 NORMAL_MAX = 80
 PADAT_MAX = 100
