@@ -149,6 +149,67 @@ def daily_hours_for_task(task, day):
     return task["estimated_hours"] / task_days
 
 
+def task_span(task):
+    """A task's (start, due) exactly as daily_hours_for_task normalises them,
+    or None when it has no usable dates."""
+    start = parse_date(task.get("start_date"))
+    due = parse_date(task.get("due_date"))
+    if start is None and due is None:
+        return None
+    if start is None:
+        start = due
+    if due is None:
+        due = start
+    if due < start:
+        due = start
+    return start, due
+
+
+def task_contribution(task, start, end):
+    """How much of a task counts inside [start, end], and why.
+
+    Uses daily_hours_for_task, the same rule compute_daily_load (and so the
+    workload card's "jam terpakai") is built on, so the numbers always add
+    up to the card. The estimate is spread evenly over every calendar day
+    from start to due (weekends included); a task whose deadline is longer
+    than the window therefore contributes only its share of the days that
+    fall inside it. Returns None when the task doesn't touch the window.
+    """
+    span = task_span(task)
+    if span is None:
+        return None
+    span_start, span_due = span
+    if span_start > end or span_due < start:
+        return None
+
+    estimated = float(task.get("estimated_hours") or 0.0)
+    span_days = count_days(span_start, span_due)
+    overlap = list(daterange(max(start, span_start), min(end, span_due)))
+    per_day = {
+        day.isoformat(): daily_hours_for_task(task, day)
+        for day in overlap
+    }
+    is_done = (task.get("status") or "").strip().lower() == "done"
+    # A finished task stops counting after today (daily_hours_for_task).
+    counted_days = [d for d in overlap if not (is_done and d > date_cls.today())]
+    hours = sum(per_day.values())
+    return {
+        "span_start": span_start.isoformat(),
+        "span_due": span_due.isoformat(),
+        "span_days": span_days,
+        "hours_per_day": estimated / span_days if span_days else 0.0,
+        "days_in_window": len(counted_days),
+        "weekend_days_in_window": sum(1 for d in counted_days if d.weekday() >= 5),
+        "hours_in_window": hours,
+        "hours_outside_window": max(estimated - hours, 0.0),
+        # True when the deadline reaches beyond this window (or starts before
+        # it), i.e. only part of the estimate is counted here.
+        "prorated": span_start < start or span_due > end,
+        "done_cutoff": is_done and len(counted_days) < len(overlap),
+        "per_day": {k: round(v, 4) for k, v in per_day.items() if v},
+    }
+
+
 def assigned_hours_in_window(db, member_id, tasks, start, end):
     task_dicts = [task_row_to_dict(task) for task in tasks]
     total_hours = 0.0
@@ -337,12 +398,18 @@ def compute_member_workload(db, member, period, ref_date):
     else:
         percent = None if total_hours else 0
         status = "overload" if total_hours else "idle"
+    capacity_days = (
+        capacity / member["capacity_hours_per_day"]
+        if member["capacity_hours_per_day"]
+        else 0
+    )
     return {
         "member": member_row_to_dict(member),
         "period": period,
         "range": {"start": start.isoformat(), "end": end.isoformat()},
         "total_hours": round(total_hours, 1),
         "capacity_hours": round(capacity, 1),
+        "capacity_days": round(capacity_days, 2),
         "percent": percent,
         "status": status,
     }
