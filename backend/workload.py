@@ -10,6 +10,26 @@ PRIORITY_WEIGHT = {"low": 1, "medium": 2, "high": 3, "urgent": 4}
 BURNOUT_EXCLUDED_CATEGORIES = ("cuti",)
 
 
+def is_leave_task(task):
+    """Time off entered as a task (category "cuti")."""
+    category = (task.get("category") or "kerja").strip().lower()
+    return category in BURNOUT_EXCLUDED_CATEGORIES
+
+
+def can_suggest_moving(task):
+    """Whether a task may appear in an overload suggestion (reassign or
+    reschedule). Finished work has nothing left to move, and leave isn't work
+    that can be handed to someone else."""
+    status = (task.get("status") or "").strip().lower()
+    return status != "done" and not is_leave_task(task)
+
+
+def role_key(member):
+    """Normalised role used to decide who counts as "the same role". An empty
+    role gives an empty key, which callers must treat as matching nobody."""
+    return (member["role"] or "").strip().casefold()
+
+
 def is_exempt_from_deadline_risk(task):
     """True for tasks that must not be judged as "enough / not enough hours":
     finished work (nothing left to schedule) and leave (time off is not a
@@ -17,8 +37,7 @@ def is_exempt_from_deadline_risk(task):
     task_row_to_dict. Note this only stops the task itself from being rated
     and listed; it doesn't change how much capacity it uses up."""
     status = (task.get("status") or "").strip().lower()
-    category = (task.get("category") or "kerja").strip().lower()
-    return status == "done" or category in BURNOUT_EXCLUDED_CATEGORIES
+    return status == "done" or is_leave_task(task)
 LOW_MAX = 30
 NORMAL_MAX = 80
 PADAT_MAX = 100
@@ -337,9 +356,12 @@ def suggest_for_overload(db, member, period, ref_date):
         (member["id"],),
     ).fetchall()
     tasks = [task_row_to_dict(row) for row in rows]
+    # Only real, unfinished work can be suggested for moving. (Leave and done
+    # hours still count toward the overload itself, see total_hours below.)
     active_tasks = [
         task for task in tasks
-        if any(daily_hours_for_task(task, day) > 0 for day in daterange(start, end))
+        if can_suggest_moving(task)
+        and any(daily_hours_for_task(task, day) > 0 for day in daterange(start, end))
     ]
     total_hours = sum(
         compute_daily_load(db, member["id"], day) for day in daterange(start, end)
@@ -354,6 +376,10 @@ def suggest_for_overload(db, member, period, ref_date):
     other_members = db.execute(
         "SELECT * FROM members WHERE id != ?", (member["id"],)
     ).fetchall()
+    # Work is only handed to someone with the same role; a member without a
+    # role has no "same role" colleagues.
+    own_role = role_key(member)
+    other_members = [m for m in other_members if own_role and role_key(m) == own_role]
     other_loads = []
     for other_member in other_members:
         info = compute_member_workload(db, other_member, period, ref_date)
@@ -375,6 +401,12 @@ def suggest_for_overload(db, member, period, ref_date):
         ),
     )
     suggestions = []
+    if not own_role:
+        no_target_reason = "Peran anggota belum diisi, jadi tidak ada rekan seperan — sarankan jadwalkan ulang."
+    elif not other_members:
+        no_target_reason = f"Tidak ada rekan lain dengan peran {member['role']} — sarankan jadwalkan ulang."
+    else:
+        no_target_reason = "Tidak ada rekan seperan yang cukup longgar — sarankan jadwalkan ulang."
 
     for task in candidates:
         if remaining_excess <= 0:
@@ -398,7 +430,10 @@ def suggest_for_overload(db, member, period, ref_date):
                 "action": "reassign",
                 "suggested_assignee_id": target["id"],
                 "suggested_assignee_name": target["name"],
-                "reason": f"Alihkan tugas untuk mengurangi overload — {target['name']} memiliki kapasitas.",
+                "reason": (
+                    f"Alihkan tugas untuk mengurangi overload — {target['name']} "
+                    f"(peran sama: {target['role']}) memiliki kapasitas."
+                ),
             })
         else:
             suggestions.append({
@@ -409,7 +444,7 @@ def suggest_for_overload(db, member, period, ref_date):
                 "suggested_new_due_date": (
                     (parse_date(task["due_date"]) or date_cls.today()) + timedelta(days=3)
                 ).isoformat(),
-                "reason": "Tidak ada rekan yang cukup longgar — sarankan jadwalkan ulang.",
+                "reason": no_target_reason,
             })
         remaining_excess -= hours
 
