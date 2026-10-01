@@ -1,37 +1,135 @@
-import { useState } from "react";
-import { Bot, MessageCircle, Send, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Bot, Grip, Maximize2, MessageCircle, Minimize2, Send, X } from "lucide-react";
 import clsx from "clsx";
 import { api } from "../lib/api";
 
-const SUGGESTIONS = [
-  "tambah task 'Review kode' untuk Budi prioritas tinggi 3 jam due besok",
-  "workload Sari minggu ini",
-  "tandai selesai Review kode",
-];
+function buildSuggestions(members, tasks) {
+  const suggestions = [];
+  const member = members[0];
+  const task = tasks.find((item) => item.status === "in_progress")
+    || tasks.find((item) => item.status === "todo");
 
-export default function ChatWidget({ onDataChanged }) {
+  if (member) suggestions.push(`Cek workload ${member.name} minggu ini`);
+  if (task) suggestions.push(`Tampilkan status tugas "${task.title}"`);
+  if (task?.status === "todo") suggestions.push(`Mulai task "${task.title}"`);
+  if (member) suggestions.push(`Tugas apa yang sedang dikerjakan ${member.name}?`);
+  if (!suggestions.length) suggestions.push("Ringkas workload tim minggu ini");
+
+  return suggestions.slice(0, 4);
+}
+
+const CONFIRMATION_FIELD_LABELS = {
+  title: "Judul",
+  description: "Deskripsi",
+  assignee_id: "Penanggung jawab",
+  priority: "Prioritas",
+  estimated_hours: "Estimasi jam",
+  status: "Status",
+  start_date: "Tanggal mulai",
+  due_date: "Deadline",
+};
+
+export default function ChatWidget({ members = [], onDataChanged }) {
   const [open, setOpen] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [panelSize, setPanelSize] = useState({ width: 380, height: 560 });
+  const [tasks, setTasks] = useState([]);
   const [messages, setMessages] = useState([
     {
       role: "bot",
-      text: "Halo! Aku bisa bantu tambah tugas, update status, hapus tugas, atau cek workload — cukup ketik dengan bahasa sehari-hari.",
+      text: "Halo! Aku bisa bantu membuat query SQL, mengelola tugas, atau mengecek workload. Cukup ketik dengan bahasa sehari-hari.",
     },
   ]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [confirmationBusy, setConfirmationBusy] = useState(null);
+  const textareaRef = useRef(null);
+  const resizeStart = useRef(null);
+
+  const refreshSuggestions = () => {
+    api.getTasks().then(setTasks).catch(() => setTasks([]));
+  };
+
+  useEffect(() => {
+    if (open) refreshSuggestions();
+  }, [open]);
+
+  const resizePanel = (event) => {
+    if (!resizeStart.current) return;
+    const start = resizeStart.current;
+    setPanelSize({
+      width: Math.max(320, Math.min(window.innerWidth - 32, start.width + start.x - event.clientX)),
+      height: Math.max(320, Math.min(window.innerHeight - 48, start.height + start.y - event.clientY)),
+    });
+  };
+
+  const startResize = (event) => {
+    event.preventDefault();
+    resizeStart.current = { x: event.clientX, y: event.clientY, ...panelSize };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const sendCurrent = () => send();
+
+  const resolveConfirmation = async (token, confirmed) => {
+    setConfirmationBusy(token);
+    try {
+      const result = await api.confirmChat(token, confirmed);
+      setMessages((current) => current.map((message) => ({
+        ...message,
+        confirmations: message.confirmations?.map((item) =>
+          item.token === token ? { ...item, resolved: true } : item
+        ),
+      })));
+      setMessages((current) => [...current, { role: "bot", text: result.reply }]);
+      if (result.action && result.action !== "none") {
+        if (result.action.includes("sql")) {
+          window.dispatchEvent(new Event("saved-queries-changed"));
+        }
+        onDataChanged();
+        refreshSuggestions();
+      }
+    } catch (error) {
+      setMessages((current) => [...current, {
+        role: "bot",
+        text: error.message || "Konfirmasi gagal diproses. Minta AI menyiapkan perubahan lagi.",
+      }]);
+    } finally {
+      setConfirmationBusy(null);
+    }
+  };
 
   const send = async (text) => {
     const msg = (text ?? input).trim();
     if (!msg || sending) return;
     setMessages((m) => [...m, { role: "user", text: msg }]);
     setInput("");
+    if (textareaRef.current) textareaRef.current.style.height = "40px";
     setSending(true);
     try {
-      const res = await api.sendChat(msg);
-      setMessages((m) => [...m, { role: "bot", text: res.reply }]);
-      if (res.action && res.action !== "none") onDataChanged();
+      const history = messages
+        .slice(1)
+        .map((item) => ({
+          role: item.role === "user" ? "user" : "assistant",
+          content: item.text,
+        }))
+        .slice(-10);
+      const res = await api.sendChat(msg, history);
+      setMessages((m) => [...m, {
+        role: "bot",
+        text: res.reply,
+        confirmations: res.confirmations,
+      }]);
+      const actions = res.actions?.length ? res.actions : [res];
+      if (actions.some((action) => action.action === "save_sql_query")) {
+        window.dispatchEvent(new Event("saved-queries-changed"));
+      }
+      if (actions.some((action) => action.action && action.action !== "none")) {
+        onDataChanged();
+        refreshSuggestions();
+      }
     } catch (e) {
-      setMessages((m) => [...m, { role: "bot", text: "Maaf, terjadi kesalahan. Coba lagi." }]);
+      setMessages((m) => [...m, { role: "bot", text: e.message || "Maaf, terjadi kesalahan. Coba lagi." }]);
     } finally {
       setSending(false);
     }
@@ -40,10 +138,39 @@ export default function ChatWidget({ onDataChanged }) {
   return (
     <>
       {open && (
-        <div className="fixed bottom-24 right-4 z-40 flex h-[70vh] max-h-[560px] w-[min(380px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-line/70 bg-white shadow-popover md:bottom-6 md:right-24">
+        <div
+          style={!fullscreen ? {
+            width: `min(${panelSize.width}px, max(280px, calc(100vw - 2rem)))`,
+            height: `min(${panelSize.height}px, max(320px, calc(100dvh - 7rem)))`,
+          } : undefined}
+          className={clsx(
+            "fixed z-40 flex flex-col overflow-hidden border border-line/70 bg-white shadow-popover",
+            fullscreen
+              ? "inset-3 rounded-xl md:inset-6"
+              : "bottom-24 right-4 min-h-[320px] min-w-[min(320px,calc(100vw-2rem))] rounded-2xl md:bottom-6 md:right-24"
+          )}
+        >
           <div className="flex items-center gap-2 border-b border-line px-4 py-3.5">
             <Bot size={17} className="text-accent" />
-            <span className="text-[14px] font-semibold text-ink">Asisten Workload</span>
+            <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-ink">Asisten Workload</span>
+            <button
+              type="button"
+              onClick={() => setFullscreen((value) => !value)}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-soft hover:bg-ink/[0.06] hover:text-ink"
+              aria-label={fullscreen ? "Keluar dari fullscreen" : "Fullscreen"}
+              title={fullscreen ? "Keluar dari fullscreen" : "Fullscreen"}
+            >
+              {fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-soft hover:bg-ink/[0.06] hover:text-ink"
+              aria-label="Tutup chat"
+              title="Tutup chat"
+            >
+              <X size={17} />
+            </button>
           </div>
 
           <div className="flex-1 space-y-2.5 overflow-y-auto px-4 py-4">
@@ -58,6 +185,50 @@ export default function ChatWidget({ onDataChanged }) {
                 )}
               >
                 {m.text}
+                {m.confirmations?.map((confirmation) => (
+                  <div key={confirmation.token} className="mt-3 w-full min-w-[240px] space-y-2 rounded-lg border border-line bg-white p-3 text-ink shadow-soft">
+                    <div className="text-[12px] font-semibold text-ink">
+                      {confirmation.operation === "delete" ? "Task yang akan dihapus" : "Perubahan task"}
+                    </div>
+                    {confirmation.items.map((item, itemIndex) => (
+                      <div key={`${item.title}-${itemIndex}`} className="border-t border-line/70 pt-2 first:border-0 first:pt-0">
+                        <div className="text-[12px] font-semibold">{item.title}</div>
+                        {item.changes?.map((change) => (
+                          <div key={change.field} className="mt-1 text-[11px] leading-relaxed text-ink-soft">
+                            {change.field}: {change.before} <span aria-hidden="true">→</span> {change.after}
+                          </div>
+                        ))}
+                        {item.record && Object.entries(item.record).map(([field, value]) => (
+                          <div key={field} className="mt-1 text-[11px] leading-relaxed text-ink-soft">
+                            {CONFIRMATION_FIELD_LABELS[field] || field}: {value}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                    {confirmation.resolved ? (
+                      <div className="border-t border-line/70 pt-2 text-[11px] text-ink-faint">Konfirmasi telah ditanggapi.</div>
+                    ) : (
+                      <div className="flex justify-end gap-2 border-t border-line/70 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => resolveConfirmation(confirmation.token, false)}
+                          disabled={confirmationBusy === confirmation.token}
+                          className="rounded-md border border-line px-2.5 py-1 text-[11px] font-medium text-ink-soft hover:bg-ink/[0.04] disabled:opacity-50"
+                        >
+                          Batalkan
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => resolveConfirmation(confirmation.token, true)}
+                          disabled={confirmationBusy === confirmation.token}
+                          className="rounded-md bg-accent px-2.5 py-1 text-[11px] font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                        >
+                          {confirmationBusy === confirmation.token ? "Memproses..." : "Konfirmasi"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             ))}
             {sending && (
@@ -68,7 +239,7 @@ export default function ChatWidget({ onDataChanged }) {
           </div>
 
           <div className="flex gap-1.5 overflow-x-auto px-4 pb-2.5">
-            {SUGGESTIONS.map((s) => (
+            {buildSuggestions(members, tasks).map((s) => (
               <button
                 key={s}
                 onClick={() => send(s)}
@@ -80,12 +251,23 @@ export default function ChatWidget({ onDataChanged }) {
           </div>
 
           <div className="flex items-center gap-2 border-t border-line px-3 py-3">
-            <input
-              placeholder="Ketik perintah..."
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              placeholder="Tulis pesan..."
               value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && send()}
-              className="h-10 flex-1 rounded-full border border-line bg-white px-4 text-[14px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              onChange={(event) => {
+                setInput(event.target.value);
+                event.target.style.height = "auto";
+                event.target.style.height = `${Math.min(event.target.scrollHeight, 128)}px`;
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                  event.preventDefault();
+                  sendCurrent();
+                }
+              }}
+              className="max-h-32 min-h-10 flex-1 resize-none rounded-xl border border-line bg-white px-3.5 py-2.5 text-[14px] leading-5 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
             <button
               onClick={() => send()}
@@ -96,16 +278,31 @@ export default function ChatWidget({ onDataChanged }) {
               <Send size={16} />
             </button>
           </div>
+          {!fullscreen && (
+            <button
+              type="button"
+              onPointerDown={startResize}
+              onPointerMove={resizePanel}
+              onPointerUp={() => { resizeStart.current = null; }}
+              className="absolute bottom-1 left-1 flex h-7 w-7 touch-none cursor-nesw-resize items-center justify-center rounded text-ink-faint hover:bg-ink/[0.06] hover:text-ink"
+              aria-label="Ubah ukuran panel chat"
+              title="Tarik untuk mengubah ukuran"
+            >
+              <Grip size={15} />
+            </button>
+          )}
         </div>
       )}
 
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-popover transition-transform hover:scale-105 active:scale-95 md:bottom-6 md:right-6"
-        aria-label={open ? "Tutup chat" : "Buka chat"}
-      >
-        {open ? <X size={22} /> : <MessageCircle size={22} />}
-      </button>
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-popover transition-transform hover:scale-105 active:scale-95 md:bottom-6 md:right-6"
+          aria-label="Buka chat"
+        >
+          <MessageCircle size={22} />
+        </button>
+      )}
     </>
   );
 }

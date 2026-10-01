@@ -52,6 +52,7 @@ export default function App() {
 
       <MobileTabBar page={page} setPage={setPage} />
       <ChatWidget
+        members={members}
         onDataChanged={() => {
           bump();
           loadMembers();

@@ -1,9 +1,13 @@
 """Flask entry point and API routes for the Team Workload Monitor."""
 
 import os
+from pathlib import Path
 
 from flask import Flask, send_from_directory
 from flask_cors import CORS
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).with_name(".env"))
 
 from database import close_db, init_db
 from routes.tasks import tasks_bp

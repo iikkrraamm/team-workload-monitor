@@ -55,6 +55,11 @@ export default function SqlPage({ onDataChanged }) {
     loadSchema();
   }, [loadSaved, loadSchema]);
 
+  useEffect(() => {
+    window.addEventListener("saved-queries-changed", loadSaved);
+    return () => window.removeEventListener("saved-queries-changed", loadSaved);
+  }, [loadSaved]);
+
   const activeQuery = useMemo(() => saved.find((q) => q.id === activeId) || null, [saved, activeId]);
   const dirty = activeQuery ? sql.trim() !== activeQuery.sql.trim() : false;
 

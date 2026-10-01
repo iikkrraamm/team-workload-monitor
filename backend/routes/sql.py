@@ -97,6 +97,26 @@ def _open_connection(allow_write):
     return conn
 
 
+def validate_generated_query(sql):
+    """Validate generated SQL by running it through the normal read-only guard."""
+    if not sql or len(sql) > MAX_SQL_LENGTH:
+        return "Query kosong atau terlalu panjang"
+
+    conn = _open_connection(allow_write=False)
+    deadline = time.monotonic() + TIMEOUT_SECONDS
+    conn.set_progress_handler(lambda: time.monotonic() > deadline, 10_000)
+    try:
+        cursor = conn.execute(sql)
+        if cursor.description is None:
+            return "Query harus menghasilkan data (SELECT)."
+        cursor.fetchone()
+        return None
+    except sqlite3.Error as exc:
+        return _friendly_error(exc, allow_write=False)
+    finally:
+        conn.close()
+
+
 def _serialize(value):
     if isinstance(value, bytes):
         return f"<BLOB {len(value)} bytes>"

@@ -102,6 +102,7 @@ export default function TasksPage({ members, refreshSignal }) {
   // view is currently active (see the two data-loading effects below).
   const [reloadTick, setReloadTick] = useState(0);
   const bump = () => setReloadTick((n) => n + 1);
+  const kanbanReloadKey = `${refreshSignal}:${reloadTick}`;
 
   const filterParams = () => {
     const f = {};
@@ -356,7 +357,7 @@ export default function TasksPage({ members, refreshSignal }) {
                 statusKey={col.key}
                 label={col.label}
                 filters={filterParams()}
-                reloadTick={reloadTick}
+                reloadTick={kanbanReloadKey}
                 columns={COLUMNS}
                 memberById={memberById}
                 onOpen={(t) => setFormTask(t)}

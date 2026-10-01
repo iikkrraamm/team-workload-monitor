@@ -198,12 +198,24 @@ frontend/
   periode yang sama tetap bisa ditandai berisiko. Tugas selesai tidak memakan
   kapasitas sama sekali.
 
-## Mengembangkan Lebih Lanjut
+## Asisten AI (OpenAI)
 
-- Asisten chat saat ini berbasis pola kata kunci (bahasa Indonesia) — cepat
-  dan tanpa biaya API. Untuk pemahaman bahasa yang lebih fleksibel, endpoint
-  `/api/ai-chat` di `app.py` bisa diganti agar memanggil Claude API
-  (`api.anthropic.com/v1/messages`) dengan pesan pengguna + daftar tugas/anggota
-  sebagai konteks, lalu memakai *tool use* untuk mengeksekusi CRUD yang sama.
+Chat memakai OpenAI SDK dengan function calling untuk memilih tindakan dari
+percakapan natural: mengelola tugas, mengecek workload, atau membuat query SQL.
+Query SQL menggunakan schema database aplikasi, diperiksa dalam mode read-only,
+lalu otomatis disimpan di menu **SQL Client**.
+
+Atur variabel berikut di `backend/.env`:
+
+```dotenv
+OPENAI_API_KEY=
+OPENAI_BASE_URL=
+OPENAI_MODEL=gpt-4o-mini
+```
+
+`OPENAI_BASE_URL` opsional untuk endpoint OpenAI-compatible. Konfigurasi lama
+`OLLAMA_URL`, `OLLAMA_TOKEN`, dan `OLLAMA_MODEL` masih didukung sebagai fallback.
+Install dependensi backend dengan `pip install -r backend/requirements.txt`.
+
 - Autentikasi multi-user belum ada — cocok untuk satu tim/workspace. Untuk
   banyak tim, tambahkan tabel `teams` dan filter berdasarkan `team_id`.

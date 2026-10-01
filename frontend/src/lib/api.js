@@ -91,5 +91,8 @@ export const api = {
   deleteSavedQuery: (id) => request(`/sql/queries/${id}`, { method: "DELETE" }),
 
   // AI chat
-  sendChat: (message) => request("/ai-chat", { method: "POST", body: { message } }),
+  sendChat: (message, history = []) =>
+    request("/ai-chat", { method: "POST", body: { message, history } }),
+  confirmChat: (token, confirmed) =>
+    request("/ai-chat/confirm", { method: "POST", body: { token, confirmed } }),
 };
