@@ -24,32 +24,30 @@ export function SkeletonTaskCard() {
 export function SkeletonTaskRow() {
   return (
     <tr className="border-b border-line last:border-0">
-      <td className="px-4 py-3">
+      <td className="px-3 py-3">
         <SkeletonBlock className="h-4 w-16" />
         <SkeletonBlock className="mt-2 h-4 w-40" />
       </td>
-      <td className="px-4 py-3">
+      <td className="px-3 py-3">
         <SkeletonBlock className="h-6 w-24 rounded-full" />
       </td>
-      <td className="px-4 py-3">
+      <td className="px-3 py-3">
         <SkeletonBlock className="h-8 w-32 rounded-lg" />
       </td>
-      <td className="px-4 py-3">
+      <td className="px-3 py-3">
         <SkeletonBlock className="h-8 w-28 rounded-lg" />
       </td>
-      <td className="px-4 py-3">
+      <td className="px-3 py-3">
         <SkeletonBlock className="h-4 w-20" />
       </td>
-      <td className="px-4 py-3">
+      <td className="px-3 py-3">
         <SkeletonBlock className="h-5 w-20 rounded-full" />
       </td>
-      <td className="px-4 py-3">
-        <SkeletonBlock className="h-4 w-10" />
+      <td className="px-3 py-3">
+        <SkeletonBlock className="h-4 w-16" />
+        <SkeletonBlock className="mt-2 h-4 w-20" />
       </td>
-      <td className="px-4 py-3">
-        <SkeletonBlock className="h-6 w-16 rounded-full" />
-      </td>
-      <td className="px-4 py-3" />
+      <td className="px-3 py-3" />
     </tr>
   );
 }

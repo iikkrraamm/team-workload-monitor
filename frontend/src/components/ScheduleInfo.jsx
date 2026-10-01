@@ -56,3 +56,18 @@ export function ShouldBeProgress({ schedule, className }) {
     </div>
   );
 }
+
+// Badge + "Seharusnya X%" bar + the one-line reason: the full schedule
+// readout used on the Kanban card and in the List view.
+export function ScheduleBlock({ schedule, className }) {
+  if (!schedule) return null;
+  return (
+    <div className={className}>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <ScheduleBadge schedule={schedule} />
+      </div>
+      <ShouldBeProgress schedule={schedule} />
+      <div className="mt-1 text-[11px] leading-snug text-ink-faint">{schedule.reason}</div>
+    </div>
+  );
+}

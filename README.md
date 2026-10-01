@@ -5,7 +5,10 @@ overload, deteksi burnout, dan asisten chat AI untuk CRUD tugas secara cepat.
 
 ## Fitur
 
-1. **Monitoring tugas tim** — Kanban board (Belum Dikerjakan / Dikerjakan / Selesai).
+1. **Monitoring tugas tim** — Kanban board (Belum Dikerjakan / Dikerjakan / Selesai)
+   dan tampilan List dengan informasi yang sama seperti kartu Kanban (rentang
+   tanggal, kapasitas tersedia, status jadwal, estimasi, sisa hari kerja, risiko).
+   List punya filter **status** tambahan (hanya di mode List).
 2. **Workload harian, mingguan, bulanan** — dihitung dari estimasi jam tugas yang
    disebar merata di sepanjang rentang tanggalnya, dibandingkan kapasitas jam/hari
    tiap anggota.
@@ -152,6 +155,21 @@ frontend/
 - Risiko burnout dihitung dari 14 hari data historis (dihitung ulang dari
   tugas yang overlap tiap tanggal), bukan snapshot tersimpan — jadi selalu
   konsisten dengan data tugas terbaru.
+- **Urutan tugas** (Kanban dan List memakai urutan yang sama, ditentukan server):
+  due date → prioritas (urgent dulu) → waktu dibuat → id. Dua kunci terakhir
+  membuat urutan pasti, sehingga tugas dengan due date sama tidak bertukar
+  tempat dan paginasi (`LIMIT/OFFSET`) tidak mengulang atau melewatkan tugas.
+  Arah: due date paling awal di atas (yang lewat deadline otomatis di paling
+  atas), kecuali bila hanya status `done` yang diminta (kolom Selesai atau
+  filter Selesai): due date terbaru di atas. Parameter opsional
+  `sort=due_asc|due_desc` pada `/api/tasks` menimpa arah itu.
+- **Index database**: `idx_tasks_status_due (status, due_date)` untuk kolom
+  Kanban dan `idx_tasks_assignee (assignee_id)` untuk filter anggota dan
+  perhitungan beban. Dibuat otomatis (`CREATE INDEX IF NOT EXISTS`) saat aplikasi
+  start. Diukur pada 100 ribu tugas: query satu kolom Kanban turun dari ±15 ms
+  menjadi ±0,2 ms. Filter dua status sekaligus di List justru sedikit lebih
+  lambat (±20 → ±60 ms pada 100 ribu tugas) karena planner SQLite memakai
+  index lalu mengurutkan seluruh hasil; pada ribuan tugas selisihnya tak terasa.
 - **Status jadwal tugas** (Kanban dan List, hanya tugas `todo` / `in_progress`;
   tugas selesai dan cuti tidak dinilai):
   - *Seharusnya* (should-be progress) = hari yang sudah berjalan ÷ jumlah hari

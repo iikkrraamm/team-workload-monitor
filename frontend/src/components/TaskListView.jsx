@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Copy, Folder } from "lucide-react";
 import { PriorityBadge, CategoryBadge, RiskBadge } from "./ui/Badge";
-import { ScheduleBadge, ShouldBeProgress } from "./ScheduleInfo";
+import { ScheduleBlock } from "./ScheduleInfo";
+import { CapacityText, HistoryNote, WorkDaysText, DeadlineRange } from "./TaskInfo";
 import Avatar, { initials } from "./ui/Avatar";
 import EmptyState from "./ui/EmptyState";
 import Button from "./ui/Button";
@@ -83,15 +84,14 @@ export default function TaskListView({
         <table className="w-full text-left text-[13px]">
           <thead>
             <tr className="border-b border-line text-[12px] text-ink-soft">
-              <th className="px-4 py-3 font-medium">Tugas</th>
-              <th className="px-4 py-3 font-medium">Assignee</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium">Prioritas</th>
-              <th className="px-4 py-3 font-medium">Due</th>
-              <th className="px-4 py-3 font-medium">Jadwal</th>
-              <th className="px-4 py-3 font-medium">Estimasi</th>
-              <th className="px-4 py-3 font-medium">Risiko</th>
-              <th className="px-4 py-3 font-medium" />
+              <th className="px-3 py-3 font-medium">Tugas</th>
+              <th className="px-3 py-3 font-medium">Assignee</th>
+              <th className="px-3 py-3 font-medium">Status</th>
+              <th className="px-3 py-3 font-medium">Prioritas</th>
+              <th className="px-3 py-3 font-medium">Due</th>
+              <th className="px-3 py-3 font-medium">Jadwal</th>
+              <th className="px-3 py-3 font-medium">Estimasi &amp; Risiko</th>
+              <th className="px-3 py-3 font-medium" />
             </tr>
           </thead>
           <tbody>
@@ -103,7 +103,7 @@ export default function TaskListView({
                   onClick={() => onOpen(t)}
                   className="cursor-pointer border-b border-line last:border-0 hover:bg-ink/[0.02]"
                 >
-                  <td className="max-w-[280px] px-4 py-3">
+                  <td className="max-w-[280px] px-3 py-3">
                     <div className="flex flex-wrap items-center gap-1.5">
                       <PriorityBadge priority={t.priority} />
                       <CategoryBadge category={t.category} />
@@ -115,8 +115,9 @@ export default function TaskListView({
                         {t.project}
                       </div>
                     )}
+                    <HistoryNote task={t} className="mt-1" />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3">
                     {assignee ? (
                       <div className="flex items-center gap-1.5 text-[12.5px] text-ink-soft">
                         <Avatar name={assignee.name} color={assignee.color} size={22} />
@@ -126,36 +127,44 @@ export default function TaskListView({
                       <span className="text-[12.5px] text-ink-faint">Belum ditentukan</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3">
                     <QuickSelect
                       value={t.status}
                       options={STATUS_OPTIONS}
                       onChange={(v) => onQuickUpdate(t.id, { status: v })}
                     />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3">
                     <QuickSelect
                       value={t.priority}
                       options={PRIORITY_OPTIONS}
                       onChange={(v) => onQuickUpdate(t.id, { priority: v })}
                     />
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-ink-soft">{t.due_date}</td>
-                  <td className="min-w-[130px] px-4 py-3">
+                  <td className="min-w-[96px] px-3 py-3 text-ink-soft">
+                    <div className="whitespace-nowrap">{t.due_date}</div>
+                    <div className="mt-0.5 text-[11.5px] text-ink-faint"><DeadlineRange task={t} /></div>
+                  </td>
+                  <td className="min-w-[150px] max-w-[220px] px-3 py-3">
                     {t.schedule ? (
-                      <div className="space-y-1.5">
-                        <ScheduleBadge schedule={t.schedule} />
-                        <ShouldBeProgress schedule={t.schedule} />
-                      </div>
+                      <ScheduleBlock schedule={t.schedule} />
                     ) : (
                       <span className="text-[12.5px] text-ink-faint">—</span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-ink-soft">{t.estimated_hours}h</td>
-                  <td className="px-4 py-3">
-                    <RiskBadge risk={t.deadline?.risk} />
+                  <td className="min-w-[116px] px-3 py-3 text-ink-soft">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="font-medium text-ink">{t.estimated_hours}h</span>
+                      <RiskBadge risk={t.deadline?.risk} />
+                    </div>
+                    <div className="mt-0.5 text-[11.5px] text-ink-faint">
+                      <WorkDaysText task={t} />
+                    </div>
+                    <div className="mt-0.5 text-[11.5px]">
+                      <CapacityText task={t} />
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-3 py-3 text-right">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -184,8 +193,6 @@ export default function TaskListView({
                 <div className="flex flex-wrap items-center gap-1.5">
                   <PriorityBadge priority={t.priority} />
                   <CategoryBadge category={t.category} />
-                  <RiskBadge risk={t.deadline?.risk} />
-                  <ScheduleBadge schedule={t.schedule} />
                 </div>
                 <div className="mt-1.5 text-[14px] font-medium leading-snug text-ink">{t.title}</div>
                 {t.project && (
@@ -206,13 +213,24 @@ export default function TaskListView({
                     <span className="text-ink-faint">Belum ditentukan</span>
                   )}
                   <span>· Due {t.due_date}</span>
-                  <span>· {t.estimated_hours}h</span>
                 </div>
-                {t.schedule && (
-                  <div className="mt-2">
-                    <ShouldBeProgress schedule={t.schedule} />
-                  </div>
-                )}
+
+                <div className="mt-2.5 flex items-center justify-between text-[11.5px] text-ink-faint">
+                  <span><DeadlineRange task={t} /></span>
+                  <CapacityText task={t} />
+                </div>
+
+                <ScheduleBlock schedule={t.schedule} className="mt-2.5" />
+
+                <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-ink-soft">
+                  <span>
+                    Estimasi <strong className="font-semibold text-ink">{t.estimated_hours}h</strong>
+                  </span>
+                  <WorkDaysText task={t} />
+                  {t.deadline && <RiskBadge risk={t.deadline.risk} />}
+                </div>
+
+                <HistoryNote task={t} className="mt-2" />
               </div>
 
               <div className="mt-3 flex items-center gap-2 border-t border-line pt-2.5">
