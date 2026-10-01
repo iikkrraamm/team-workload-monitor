@@ -41,6 +41,8 @@ const COLUMNS = [
   { key: "done", label: "Selesai" },
 ];
 
+const STATUS_FILTER_OPTIONS = COLUMNS.map((c) => ({ value: c.key, label: c.label }));
+
 const PRIORITY_OPTIONS = [
   { value: "urgent", label: "Urgent" },
   { value: "high", label: "Tinggi" },
@@ -68,6 +70,8 @@ export default function TasksPage({ members, refreshSignal }) {
     }
   });
 
+  // Status filter exists only in the List view; in Kanban the status is the column.
+  const [filterStatus, setFilterStatus] = useState([]);
   const [filterAssignee, setFilterAssignee] = useState([]);
   const [filterPriority, setFilterPriority] = useState([]);
   const [filterCategory, setFilterCategory] = useState([]);
@@ -110,12 +114,17 @@ export default function TasksPage({ members, refreshSignal }) {
     if (filterDueAfter) f.due_after = filterDueAfter;
     return f;
   };
-  const filterKey = JSON.stringify(filterParams());
+  // The List adds the status filter on top of the shared ones.
+  const listParams = () => ({
+    ...filterParams(),
+    ...(filterStatus.length ? { status: filterStatus } : {}),
+  });
+  const listFilterKey = JSON.stringify(listParams());
 
   // Any filter changing invalidates the list's current page — without this
   // you could be stuck on "page 4" after a filter narrows the result set
   // down to one page.
-  useEffect(() => setListPage(1), [filterKey]);
+  useEffect(() => setListPage(1), [listFilterKey]);
 
   // Fetch List data only while that view is active — Kanban's three columns
   // fetch independently inside KanbanColumn itself.
@@ -125,7 +134,7 @@ export default function TasksPage({ members, refreshSignal }) {
     let cancelled = false;
     setListLoading(true);
     api
-      .getTasksPage(filterParams(), listPage, LIST_PAGE_SIZE)
+      .getTasksPage(listParams(), listPage, LIST_PAGE_SIZE)
       .then((data) => {
         if (cancelled) return;
         setListTasks(data.items);
@@ -142,7 +151,7 @@ export default function TasksPage({ members, refreshSignal }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, filterKey, listPage, refreshSignal, reloadTick]);
+  }, [viewMode, listFilterKey, listPage, refreshSignal, reloadTick]);
 
   // Project suggestions must come from ALL tasks, not the filtered/paginated
   // list — otherwise filtering by one project would hide every other
@@ -167,7 +176,7 @@ export default function TasksPage({ members, refreshSignal }) {
     category: onlyValue(filterCategory) || "kerja",
     project: onlyValue(filterProject) || "",
     estimated_hours: 4,
-    status: "todo",
+    status: (viewMode === "list" && onlyValue(filterStatus)) || "todo",
     start_date: filterDueAfter || formatDateInput(new Date()),
     due_date: filterDueBefore || formatDateInput(new Date(Date.now() + 3 * 86400000)),
   });
@@ -191,6 +200,7 @@ export default function TasksPage({ members, refreshSignal }) {
       project: onlyValue(filterProject),
       assignee_id: onlyValue(filterAssignee),
       estimated_hours: 3,
+      status: viewMode === "list" ? onlyValue(filterStatus) : undefined,
     });
     setQuickTitle("");
     bump();
@@ -231,6 +241,7 @@ export default function TasksPage({ members, refreshSignal }) {
   };
 
   const resetFilters = () => {
+    setFilterStatus([]);
     setFilterAssignee([]);
     setFilterPriority([]);
     setFilterCategory([]);
@@ -270,6 +281,16 @@ export default function TasksPage({ members, refreshSignal }) {
         </div>
 
         <div className="mt-3.5 grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center">
+          {viewMode === "list" && (
+            <MultiSelect
+              options={STATUS_FILTER_OPTIONS}
+              selected={filterStatus}
+              onChange={setFilterStatus}
+              placeholder="Semua status"
+              noun="status"
+              className="w-full sm:w-44"
+            />
+          )}
           <MultiSelect
             options={memberOptions}
             selected={filterAssignee}

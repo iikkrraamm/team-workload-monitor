@@ -20,6 +20,37 @@ from workload import (
 tasks_bp = Blueprint("tasks", __name__)
 
 
+# Urgent first. Unknown/empty priorities sort last.
+_PRIORITY_RANK_SQL = (
+    "CASE LOWER(COALESCE(priority, '')) "
+    "WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 "
+    "ELSE 4 END"
+)
+
+
+def _order_by_clause(statuses):
+    """Deterministic task order shared by the Kanban columns and the List.
+
+    Sorted by due date, then priority (urgent first), then creation time, then
+    id. The last two make the order total, so tasks sharing a due date can't
+    swap places between requests and a LIMIT/OFFSET page never repeats or
+    skips a task.
+
+    Direction: earliest due date first, except when only finished tasks are
+    asked for (the "Selesai" column): there the most recent due date comes
+    first, so recently finished work isn't buried under old tasks. An explicit
+    ?sort=due_asc|due_desc overrides that; anything else is ignored.
+    """
+    sort = request.args.get("sort")
+    if sort not in ("due_asc", "due_desc"):
+        sort = "due_desc" if statuses and set(statuses) == {"done"} else "due_asc"
+    if sort == "due_desc":
+        return (
+            f" ORDER BY due_date DESC, {_PRIORITY_RANK_SQL} ASC, created_at DESC, id DESC"
+        )
+    return f" ORDER BY due_date ASC, {_PRIORITY_RANK_SQL} ASC, created_at ASC, id ASC"
+
+
 def _add_in_filter(query, params, column, values):
     """Append `AND column IN (?, ?, ...)` for a non-empty list of values."""
     if not values:
@@ -67,7 +98,7 @@ def list_tasks():
     # Count against the same WHERE clause, before ORDER BY/LIMIT are added.
     total = db.execute(query.replace("SELECT *", "SELECT COUNT(*)", 1), params).fetchone()[0]
 
-    query += " ORDER BY due_date ASC"
+    query += _order_by_clause([v for v in request.args.getlist("status") if v])
 
     # Pagination is opt-in via ?page — callers that need the full filtered
     # set regardless of "page" (the Kanban board, the risk-scan endpoint,

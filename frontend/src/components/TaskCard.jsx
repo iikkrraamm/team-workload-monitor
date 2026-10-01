@@ -1,8 +1,8 @@
-import clsx from "clsx";
 import { Copy, Folder } from "lucide-react";
 import { initials } from "./ui/Avatar";
 import { PriorityBadge, CategoryBadge, RiskBadge } from "./ui/Badge";
-import { ScheduleBadge, ShouldBeProgress } from "./ScheduleInfo";
+import { ScheduleBlock } from "./ScheduleInfo";
+import { CapacityText, HistoryNote, WorkDaysText, DeadlineRange } from "./TaskInfo";
 
 export default function TaskCard({ task, assignee, columns, currentStatus, onOpen, onMove, onCopy }) {
   const t = task;
@@ -41,53 +41,21 @@ export default function TaskCard({ task, assignee, columns, currentStatus, onOpe
       </div>
 
       <div className="mt-2.5 flex items-center justify-between text-[11.5px] text-ink-faint">
-        {t.deadline ? (
-          <>
-            <span>
-              {t.deadline.window_start} → {t.deadline.due_date}
-            </span>
-            {/* Done and leave tasks come back with risk = null: they aren't rated,
-                so don't show a capacity shortfall for them either. */}
-            {t.deadline.risk && (
-              <span
-                className={clsx(
-                  t.deadline.available_hours < 0 ? "font-semibold text-status-overload" : "text-ink-soft"
-                )}
-              >
-                {t.deadline.available_hours < 0
-                  ? `Kekurangan ${Math.abs(t.deadline.available_hours)}h`
-                  : `${t.deadline.available_hours}h tersedia`}
-              </span>
-            )}
-          </>
-        ) : (
-          <span>Tidak ada deadline</span>
-        )}
+        <span><DeadlineRange task={t} /></span>
+        <CapacityText task={t} />
       </div>
 
-      {t.schedule && (
-        <div className="mt-2.5">
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <ScheduleBadge schedule={t.schedule} />
-          </div>
-          <ShouldBeProgress schedule={t.schedule} />
-          <div className="mt-1 text-[11px] leading-snug text-ink-faint">{t.schedule.reason}</div>
-        </div>
-      )}
+      <ScheduleBlock schedule={t.schedule} className="mt-2.5" />
 
       <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-ink-soft">
         <span>
           Estimasi <strong className="font-semibold text-ink">{t.estimated_hours}h</strong>
         </span>
-        <span>Sisa hari kerja: {t.deadline?.work_days_remaining ?? "-"}</span>
+        <WorkDaysText task={t} />
         {t.deadline && <RiskBadge risk={t.deadline.risk} />}
       </div>
 
-      {t.deadline?.counted_as_history && (
-        <div className="mt-2 text-[11px] italic text-ink-faint">
-          Dihitung sebagai histori (tugas sudah selesai)
-        </div>
-      )}
+      <HistoryNote task={t} className="mt-2" />
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-line pt-2.5">
         {columns
