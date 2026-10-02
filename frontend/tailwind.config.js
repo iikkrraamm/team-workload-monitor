@@ -1,5 +1,12 @@
 /** @type {import('tailwindcss').Config} */
+
+// Colors are CSS variables (see index.css) holding "R G B" so that opacity
+// modifiers such as bg-ink/5 keep working and a theme is just a different set
+// of values for the same names.
+const v = (name) => `rgb(var(--${name}) / <alpha-value>)`;
+
 export default {
+  darkMode: "class",
   content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {
     extend: {
@@ -18,25 +25,36 @@ export default {
         ],
       },
       colors: {
-        canvas: "#F5F5F7",
+        canvas: v("canvas"),
+        // Cards, inputs, modals, popovers: anything that sits on the canvas.
+        surface: v("surface"),
         ink: {
-          DEFAULT: "#1D1D1F",
-          soft: "#6E6E73",
-          faint: "#AEAEB2",
+          DEFAULT: v("ink"),
+          soft: v("ink-soft"),
+          faint: v("ink-faint"),
         },
-        line: "#E5E5EA",
+        line: v("line"),
         accent: {
-          DEFAULT: "#0071E3",
-          hover: "#0077ED",
-          soft: "#E8F1FC",
+          // Accent as text, icon, border or tint (e.g. text-accent, bg-accent/10).
+          DEFAULT: v("accent"),
+          hover: v("accent-hover"),
+          soft: v("accent-soft"),
+          // Accent as a solid fill under white text (buttons, chat bubble,
+          // logo). Kept dark enough for white text in both themes.
+          solid: v("accent-solid"),
+          "solid-hover": v("accent-solid-hover"),
         },
         status: {
-          idle: "#8E8E93",
-          low: "#5AC8FA",
-          normal: "#34C759",
-          padat: "#FF9F0A",
-          overload: "#FF3B30",
+          idle: v("status-idle"),
+          low: v("status-low"),
+          normal: v("status-normal"),
+          padat: v("status-padat"),
+          overload: v("status-overload"),
         },
+        // Text colors for badges on a tinted status background.
+        ok: v("ok"),
+        warn: v("warn"),
+        info: v("info"),
       },
       borderRadius: {
         xl2: "1.25rem",

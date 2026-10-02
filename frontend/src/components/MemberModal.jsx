@@ -55,7 +55,7 @@ export default function MemberModal({ member, onClose, onSave, onDelete }) {
               type="color"
               value={form.color}
               onChange={(e) => update("color", e.target.value)}
-              className="h-10 w-full cursor-pointer rounded-lg border border-line bg-white p-1"
+              className="h-10 w-full cursor-pointer rounded-lg border border-line bg-surface p-1"
             />
           </Field>
         </div>

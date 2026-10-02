@@ -1,11 +1,12 @@
 import clsx from "clsx";
 import { NAV_ITEMS } from "./NavItems";
+import ThemeToggle from "./ThemeToggle";
 
 export default function Sidebar({ page, setPage }) {
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-line/70 bg-white/70 backdrop-blur-xl md:flex">
+    <aside className="hidden w-64 shrink-0 flex-col border-r border-line/70 bg-surface/70 backdrop-blur-xl md:flex">
       <div className="flex items-center gap-3 px-6 pt-6 pb-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-[13px] font-bold text-white">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-solid text-[13px] font-bold text-white">
           WM
         </div>
         <div className="leading-tight">
@@ -35,6 +36,10 @@ export default function Sidebar({ page, setPage }) {
           );
         })}
       </nav>
+
+      <div className="px-3 pb-1">
+        <ThemeToggle variant="row" />
+      </div>
 
       <div className="m-3 rounded-xl bg-ink/[0.04] px-3.5 py-3 text-[12px] leading-relaxed text-ink-soft">
         Tip: gunakan chat AI di kanan bawah untuk tambah / update tugas secara cepat.

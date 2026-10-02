@@ -77,7 +77,7 @@ export default function MultiSelect({
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={clsx(
-          "flex h-10 w-full items-center justify-between gap-2 rounded-lg border bg-white px-3 text-[14px] outline-none transition-shadow",
+          "flex h-10 w-full items-center justify-between gap-2 rounded-lg border bg-surface px-3 text-[14px] outline-none transition-shadow",
           open ? "border-accent ring-2 ring-accent/20" : "border-line",
           selected.length === 0 ? "text-ink-faint" : "text-ink"
         )}
@@ -109,7 +109,7 @@ export default function MultiSelect({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-1.5 w-[max(100%,240px)] max-w-[calc(100vw-2rem)] rounded-xl border border-line bg-white p-1.5 shadow-popover">
+        <div className="absolute left-0 top-full z-30 mt-1.5 w-[max(100%,240px)] max-w-[calc(100vw-2rem)] rounded-xl border border-line bg-surface p-1.5 shadow-popover">
           <input
             autoFocus
             value={search}
@@ -139,7 +139,7 @@ export default function MultiSelect({
                   <span
                     className={clsx(
                       "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
-                      checked ? "border-accent bg-accent text-white" : "border-ink-faint"
+                      checked ? "border-accent bg-accent-solid text-white" : "border-ink-faint"
                     )}
                   >
                     {checked && <Check size={11} strokeWidth={3} />}

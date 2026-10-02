@@ -17,9 +17,9 @@ export const PRIORITY_LABEL = {
 
 const STATUS_STYLE = {
   idle: "bg-status-idle/10 text-status-idle",
-  low: "bg-status-low/10 text-[#0a7ea8]",
-  normal: "bg-status-normal/10 text-[#1a8a3d]",
-  padat: "bg-status-padat/10 text-[#c9760a]",
+  low: "bg-status-low/10 text-info",
+  normal: "bg-status-normal/10 text-ok",
+  padat: "bg-status-padat/10 text-warn",
   overload: "bg-status-overload/10 text-status-overload",
 };
 
@@ -48,7 +48,7 @@ export function StatusPill({ status }) {
 
 const PRIORITY_STYLE = {
   urgent: "bg-status-overload/10 text-status-overload",
-  high: "bg-status-padat/10 text-[#c9760a]",
+  high: "bg-status-padat/10 text-warn",
   medium: "bg-accent/10 text-accent",
   low: "bg-ink/[0.06] text-ink-soft",
 };
@@ -76,8 +76,8 @@ export const CATEGORY_LABEL = {
 const CATEGORY_STYLE = {
   kerja: "bg-ink/[0.06] text-ink-soft",
   meeting: "bg-accent/10 text-accent",
-  cuti: "bg-status-padat/10 text-[#c9760a]",
-  lainnya: "bg-status-low/10 text-[#0a7ea8]",
+  cuti: "bg-status-padat/10 text-warn",
+  lainnya: "bg-status-low/10 text-info",
 };
 
 export function CategoryBadge({ category }) {
@@ -101,8 +101,8 @@ export const RISK_LABEL = {
 };
 
 const RISK_STYLE = {
-  cukup: "bg-status-normal/10 text-[#1a8a3d]",
-  ketat: "bg-status-padat/10 text-[#c9760a]",
+  cukup: "bg-status-normal/10 text-ok",
+  ketat: "bg-status-padat/10 text-warn",
   tidak_cukup: "bg-status-overload/10 text-status-overload",
 };
 

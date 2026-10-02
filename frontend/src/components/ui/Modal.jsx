@@ -3,11 +3,11 @@ import { X } from "lucide-react";
 export default function Modal({ title, onClose, children, footer, width = 480 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm animate-[fadeIn_.15s_ease-out]"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 dark:bg-black/60 p-4 backdrop-blur-sm animate-[fadeIn_.15s_ease-out]"
       onClick={onClose}
     >
       <div
-        className="flex max-h-[85vh] w-full flex-col rounded-2xl bg-white shadow-popover"
+        className="flex max-h-[85vh] w-full flex-col rounded-2xl bg-surface shadow-popover"
         style={{ maxWidth: width }}
         onClick={(e) => e.stopPropagation()}
       >

@@ -144,7 +144,7 @@ export default function ChatWidget({ members = [], onDataChanged }) {
             height: `min(${panelSize.height}px, max(320px, calc(100dvh - 7rem)))`,
           } : undefined}
           className={clsx(
-            "fixed z-40 flex flex-col overflow-hidden border border-line/70 bg-white shadow-popover",
+            "fixed z-40 flex flex-col overflow-hidden border border-line/70 bg-surface shadow-popover",
             fullscreen
               ? "inset-3 rounded-xl md:inset-6"
               : "bottom-24 right-4 min-h-[320px] min-w-[min(320px,calc(100vw-2rem))] rounded-2xl md:bottom-6 md:right-24"
@@ -180,13 +180,13 @@ export default function ChatWidget({ members = [], onDataChanged }) {
                 className={clsx(
                   "max-w-[85%] rounded-2xl px-3.5 py-2 text-[13.5px] leading-relaxed",
                   m.role === "user"
-                    ? "ml-auto bg-accent text-white rounded-br-md"
+                    ? "ml-auto bg-accent-solid text-white rounded-br-md"
                     : "bg-ink/[0.05] text-ink rounded-bl-md"
                 )}
               >
                 {m.text}
                 {m.confirmations?.map((confirmation) => (
-                  <div key={confirmation.token} className="mt-3 w-full min-w-[240px] space-y-2 rounded-lg border border-line bg-white p-3 text-ink shadow-soft">
+                  <div key={confirmation.token} className="mt-3 w-full min-w-[240px] space-y-2 rounded-lg border border-line bg-surface p-3 text-ink shadow-soft">
                     <div className="text-[12px] font-semibold text-ink">
                       {confirmation.operation === "delete" ? "Task yang akan dihapus" : "Perubahan task"}
                     </div>
@@ -221,7 +221,7 @@ export default function ChatWidget({ members = [], onDataChanged }) {
                           type="button"
                           onClick={() => resolveConfirmation(confirmation.token, true)}
                           disabled={confirmationBusy === confirmation.token}
-                          className="rounded-md bg-accent px-2.5 py-1 text-[11px] font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                          className="rounded-md bg-accent-solid px-2.5 py-1 text-[11px] font-medium text-white hover:bg-accent-solid-hover disabled:opacity-50"
                         >
                           {confirmationBusy === confirmation.token ? "Memproses..." : "Konfirmasi"}
                         </button>
@@ -267,11 +267,11 @@ export default function ChatWidget({ members = [], onDataChanged }) {
                   sendCurrent();
                 }
               }}
-              className="max-h-32 min-h-10 flex-1 resize-none rounded-xl border border-line bg-white px-3.5 py-2.5 text-[14px] leading-5 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              className="max-h-32 min-h-10 flex-1 resize-none rounded-xl border border-line bg-surface px-3.5 py-2.5 text-[14px] leading-5 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
             <button
               onClick={() => send()}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-white hover:bg-accent-hover disabled:opacity-40"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-solid text-white hover:bg-accent-solid-hover disabled:opacity-40"
               disabled={!input.trim() || sending}
               aria-label="Kirim"
             >
@@ -297,7 +297,7 @@ export default function ChatWidget({ members = [], onDataChanged }) {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-popover transition-transform hover:scale-105 active:scale-95 md:bottom-6 md:right-6"
+          className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-accent-solid text-white shadow-popover transition-transform hover:scale-105 active:scale-95 md:bottom-6 md:right-6"
           aria-label="Buka chat"
         >
           <MessageCircle size={22} />

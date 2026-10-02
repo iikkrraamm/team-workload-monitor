@@ -2,7 +2,7 @@ import { forwardRef } from "react";
 import clsx from "clsx";
 
 export const inputClass =
-  "rounded-lg border border-line bg-white px-3 h-10 text-[14px] text-ink placeholder:text-ink-faint outline-none transition-shadow focus:border-accent focus:ring-2 focus:ring-accent/20";
+  "rounded-lg border border-line bg-surface px-3 h-10 text-[14px] text-ink placeholder:text-ink-faint outline-none transition-shadow focus:border-accent focus:ring-2 focus:ring-accent/20";
 
 // Tailwind resolves conflicting utilities by CSS order, not class order, and
 // `w-full` is emitted after `w-20`, `w-48`, `w-auto`... so a hard-coded
@@ -38,7 +38,7 @@ export const Textarea = forwardRef(function Textarea({ className, ...props }, re
       ref={ref}
       className={clsx(
         widthDefault(className),
-        "rounded-lg border border-line bg-white px-3 py-2 text-[14px] text-ink placeholder:text-ink-faint outline-none transition-shadow focus:border-accent focus:ring-2 focus:ring-accent/20",
+        "rounded-lg border border-line bg-surface px-3 py-2 text-[14px] text-ink placeholder:text-ink-faint outline-none transition-shadow focus:border-accent focus:ring-2 focus:ring-accent/20",
         className
       )}
       {...props}

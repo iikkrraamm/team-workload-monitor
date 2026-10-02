@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
 } from "recharts";
+import { useTheme } from "../lib/theme";
 import { api } from "../lib/api";
 import { formatDateInput, shiftWorkloadDate } from "../lib/dateUtils";
 import Card from "../components/ui/Card";
@@ -18,6 +19,27 @@ const PERIOD_OPTIONS = [
   { value: "month", label: "Bulanan" },
 ];
 
+// Recharts draws SVG attributes and inline styles, which can't read the CSS
+// variables the rest of the app uses, so the chart gets its colors here.
+const CHART_THEME = {
+  light: {
+    grid: "rgba(29,29,31,0.06)",
+    tick: "#6E6E73",
+    tooltipBg: "#FFFFFF",
+    tooltipBorder: "#E5E5EA",
+    tooltipText: "#1D1D1F",
+    cursor: "rgba(0,0,0,0.04)",
+  },
+  dark: {
+    grid: "rgba(245,245,247,0.10)",
+    tick: "#A1A1A6",
+    tooltipBg: "#1C1C1E",
+    tooltipBorder: "#38383A",
+    tooltipText: "#F5F5F7",
+    cursor: "rgba(255,255,255,0.06)",
+  },
+};
+
 const CHART_COLOR = {
   idle: "#8E8E93",
   low: "#5AC8FA",
@@ -29,6 +51,8 @@ const CHART_COLOR = {
 const RISK_LABEL = { high: "Tinggi", medium: "Sedang", low: "Rendah" };
 
 export default function WorkloadPage({ members }) {
+  const { theme } = useTheme();
+  const chartTheme = CHART_THEME[theme];
   const [period, setPeriod] = useState("week");
   const [referenceDate, setReferenceDate] = useState(() => formatDateInput(new Date()));
   const [data, setData] = useState(null);
@@ -95,7 +119,7 @@ export default function WorkloadPage({ members }) {
         <SegmentedControl options={PERIOD_OPTIONS} value={period} onChange={setPeriod} />
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center gap-1 rounded-full border border-line bg-white p-1">
+          <div className="flex items-center gap-1 rounded-full border border-line bg-surface p-1">
             <button
               onClick={() => setReferenceDate((v) => shiftWorkloadDate(v, -1, period))}
               className="flex h-8 w-8 items-center justify-center rounded-full text-ink-soft hover:bg-ink/5"
@@ -132,12 +156,21 @@ export default function WorkloadPage({ members }) {
           <div className="h-64 w-full">
             <ResponsiveContainer>
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(29,29,31,0.06)" />
-                <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#6E6E73" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#6E6E73" }} axisLine={false} tickLine={false} unit="%" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.grid} />
+                <XAxis dataKey="name" tick={{ fontSize: 12, fill: chartTheme.tick }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: chartTheme.tick }} axisLine={false} tickLine={false} unit="%" />
                 <Tooltip
                   formatter={(v) => `${v}%`}
-                  contentStyle={{ borderRadius: 12, border: "1px solid #E5E5EA", fontSize: 13 }}
+                  cursor={{ fill: chartTheme.cursor }}
+                  contentStyle={{
+                    borderRadius: 12,
+                    border: `1px solid ${chartTheme.tooltipBorder}`,
+                    background: chartTheme.tooltipBg,
+                    color: chartTheme.tooltipText,
+                    fontSize: 13,
+                  }}
+                  labelStyle={{ color: chartTheme.tooltipText }}
+                  itemStyle={{ color: chartTheme.tooltipText }}
                 />
                 <Bar dataKey="percent" radius={[8, 8, 0, 0]}>
                   {chartData.map((d, i) => (
@@ -165,8 +198,8 @@ export default function WorkloadPage({ members }) {
                     b.risk === "high"
                       ? "bg-status-overload/10 text-status-overload"
                       : b.risk === "medium"
-                      ? "bg-status-padat/10 text-[#c9760a]"
-                      : "bg-status-normal/10 text-[#1a8a3d]"
+                      ? "bg-status-padat/10 text-warn"
+                      : "bg-status-normal/10 text-ok"
                   }`}
                 >
                   {RISK_LABEL[b.risk]}
