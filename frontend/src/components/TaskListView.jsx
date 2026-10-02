@@ -28,7 +28,7 @@ function QuickSelect({ value, options, onChange, tone }) {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`h-8 rounded-lg border border-line bg-white px-2 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 ${tone || "text-ink"}`}
+        className={`h-8 rounded-lg border border-line bg-surface px-2 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 ${tone || "text-ink"}`}
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -57,7 +57,7 @@ export default function TaskListView({
   if (loading) {
     return (
       <div>
-        <div className="hidden overflow-hidden rounded-2xl border border-line/70 bg-white md:block">
+        <div className="hidden overflow-hidden rounded-2xl border border-line/70 bg-surface md:block">
           <table className="w-full text-left text-[13px]">
             <tbody>
               {Array.from({ length: 6 }).map((_, i) => (
@@ -80,7 +80,7 @@ export default function TaskListView({
   return (
     <div>
       {/* Desktop: table */}
-      <div className="hidden overflow-x-auto rounded-2xl border border-line/70 bg-white md:block">
+      <div className="hidden overflow-x-auto rounded-2xl border border-line/70 bg-surface md:block">
         <table className="w-full text-left text-[13px]">
           <thead>
             <tr className="border-b border-line text-[12px] text-ink-soft">
@@ -188,7 +188,7 @@ export default function TaskListView({
         {tasks.map((t) => {
           const assignee = memberById[t.assignee_id];
           return (
-            <div key={t.id} className="rounded-xl border border-line/70 bg-white p-3.5">
+            <div key={t.id} className="rounded-xl border border-line/70 bg-surface p-3.5">
               <div onClick={() => onOpen(t)} className="cursor-pointer">
                 <div className="flex flex-wrap items-center gap-1.5">
                   <PriorityBadge priority={t.priority} />

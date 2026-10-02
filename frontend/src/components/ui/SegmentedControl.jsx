@@ -15,7 +15,7 @@ export default function SegmentedControl({ options, value, onChange, className }
           className={clsx(
             "rounded-full px-3.5 h-8 text-[13px] font-medium transition-all",
             value === opt.value
-              ? "bg-white text-ink shadow-sm"
+              ? "bg-surface text-ink shadow-sm dark:bg-ink/[0.14] dark:shadow-none"
               : "text-ink-soft hover:text-ink"
           )}
         >

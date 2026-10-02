@@ -10,8 +10,8 @@ const LABEL = {
 };
 
 const BADGE_STYLE = {
-  on_track: "bg-status-normal/10 text-[#1a8a3d]",
-  terlambat: "bg-status-padat/10 text-[#c9760a]",
+  on_track: "bg-status-normal/10 text-ok",
+  terlambat: "bg-status-padat/10 text-warn",
   lewat_deadline: "bg-status-overload/10 text-status-overload",
 };
 

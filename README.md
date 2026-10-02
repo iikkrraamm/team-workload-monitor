@@ -59,6 +59,21 @@ overload, deteksi burnout, dan asisten chat AI untuk CRUD tugas secara cepat.
    dibuat tanpa library tambahan, jadi tidak ada paket baru yang perlu
    di-install di server.
 
+8. **Mode gelap** — tombol "Mode gelap" di sidebar (desktop) dan ikon matahari/bulan
+   di bar atas (HP). Pilihan disimpan di browser (`localStorage`, kunci `app-theme`),
+   sama seperti pilihan Kanban/List. Selama belum memilih, aplikasi mengikuti
+   pengaturan sistem (dan ikut berubah bila pengaturan itu berubah); setelah memilih,
+   pilihan pengguna yang dipakai, termasuk di tab lain. Tema diterapkan sebelum
+   halaman tampil, jadi tidak ada kilatan putih saat memuat.
+
+   Untuk pengembang: warna adalah token CSS variable (`index.css`) yang dipakai lewat
+   kelas Tailwind (`bg-surface`, `bg-canvas`, `text-ink`, `text-ink-soft`,
+   `border-line`, `text-accent`, `text-ok` / `text-warn` / `text-info`). Jangan
+   memakai `bg-white` atau warna hex langsung di komponen, karena tidak akan ikut
+   berganti tema. `bg-accent-solid` untuk isian biru di bawah teks putih (tombol,
+   bubble chat). Warna di dalam chart Recharts diatur di `CHART_THEME`
+   (`WorkloadPage.jsx`), karena atribut SVG tidak bisa membaca CSS variable.
+
 ## Menjalankan Backend
 
 ```bash

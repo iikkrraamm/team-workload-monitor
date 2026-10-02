@@ -9,6 +9,30 @@
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#F5F5F7" />
+    <script>
+      // Runs before first paint so a dark-mode user never sees a white flash.
+      // Keep the key and the fallback (follow the OS) in step with
+      // src/lib/theme.jsx.
+      (function () {
+        var theme;
+        try {
+          theme = localStorage.getItem("app-theme");
+        } catch (e) {}
+        if (theme !== "light" && theme !== "dark") {
+          theme =
+            window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+        }
+        var root = document.documentElement;
+        if (theme === "dark") root.classList.add("dark");
+        root.style.colorScheme = theme;
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", theme === "dark" ? "#0E0E10" : "#F5F5F7");
+      })();
+    </script>
     <title>Beban Kerja Tim</title>
   </head>
   <body>

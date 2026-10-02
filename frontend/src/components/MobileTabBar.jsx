@@ -4,7 +4,7 @@ import { NAV_ITEMS } from "./NavItems";
 export default function MobileTabBar({ page, setPage }) {
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line/70 bg-white/85 backdrop-blur-xl md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line/70 bg-surface/85 backdrop-blur-xl md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       {NAV_ITEMS.map((item) => {

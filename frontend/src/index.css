@@ -3,6 +3,56 @@
 @tailwind utilities;
 
 @layer base {
+  /* Light theme: exactly the colors the app always had. */
+  :root {
+    --canvas: 245 245 247;
+    --surface: 255 255 255;
+    --ink: 29 29 31;
+    --ink-soft: 110 110 115;
+    --ink-faint: 174 174 178;
+    --line: 229 229 234;
+    --accent: 0 113 227;
+    --accent-hover: 0 119 237;
+    --accent-soft: 232 241 252;
+    --accent-solid: 0 113 227;
+    --accent-solid-hover: 0 119 237;
+    --status-idle: 142 142 147;
+    --status-low: 90 200 250;
+    --status-normal: 52 199 89;
+    --status-padat: 255 159 10;
+    --status-overload: 255 59 48;
+    --ok: 26 138 61;
+    --warn: 201 118 10;
+    --info: 10 126 168;
+    color-scheme: light;
+  }
+
+  /* Dark theme. Text pairs were checked against WCAG AA (>= 4.5:1), including
+     ink-faint (hints, placeholders, tab labels), which is the weakest text. */
+  .dark {
+    --canvas: 14 14 16;
+    --surface: 28 28 30;
+    --ink: 245 245 247;
+    --ink-soft: 161 161 166;
+    --ink-faint: 132 132 137;
+    --line: 56 56 58;
+    --accent: 77 163 255;
+    --accent-hover: 107 178 255;
+    --accent-soft: 20 48 79;
+    --accent-solid: 0 113 227;
+    --accent-solid-hover: 20 130 240;
+    --status-idle: 152 152 157;
+    --status-low: 100 210 255;
+    --status-normal: 48 209 88;
+    --status-padat: 255 159 10;
+    --status-overload: 255 69 58;
+    --ok: 74 222 128;
+    --warn: 255 179 64;
+    --info: 100 210 255;
+    /* Native controls (date picker, select popup, scrollbars) follow. */
+    color-scheme: dark;
+  }
+
   html {
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
@@ -24,7 +74,7 @@
   input,
   select,
   textarea {
-    @apply bg-white;
+    @apply bg-surface;
   }
 
   /* Quiet scrollbars, Mac-style */

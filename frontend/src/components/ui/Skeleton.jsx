@@ -6,7 +6,7 @@ export function SkeletonBlock({ className }) {
 
 export function SkeletonTaskCard() {
   return (
-    <div className="mb-2.5 rounded-xl border border-line/70 bg-white p-3.5">
+    <div className="mb-2.5 rounded-xl border border-line/70 bg-surface p-3.5">
       <div className="flex items-center gap-1.5">
         <SkeletonBlock className="h-4 w-14" />
         <SkeletonBlock className="h-4 w-16" />

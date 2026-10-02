@@ -5,7 +5,7 @@ export default function ActivityCard({ activity, member, onOpen, onCopy }) {
   return (
     <div
       onClick={onOpen}
-      className="cursor-pointer rounded-xl border border-line/70 bg-white p-3.5 transition-shadow hover:shadow-soft"
+      className="cursor-pointer rounded-xl border border-line/70 bg-surface p-3.5 transition-shadow hover:shadow-soft"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
