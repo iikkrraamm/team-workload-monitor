@@ -3,7 +3,32 @@ import { Bot, Grip, Maximize2, MessageCircle, Minimize2, Send, X } from "lucide-
 import clsx from "clsx";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import { api } from "../lib/api";
+
+function prepareChatMarkdown(text) {
+  return text
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_, formula) => `$$\n${formula.trim()}\n$$`)
+    .replace(/^\s*\[([^\]\r\n]*\\[A-Za-z]+[^\]\r\n]*)\]\s*$/gm, (_, formula) => `$$\n${formula.trim()}\n$$`);
+}
+
+function remarkChatBreaks() {
+  return (tree) => {
+    const transformChildren = (node) => {
+      if (!Array.isArray(node.children)) return;
+      node.children = node.children.flatMap((child) => {
+        if (child.type === "html" && /^<br\s*\/?>$/i.test(child.value.trim())) {
+          return [{ type: "break" }];
+        }
+        transformChildren(child);
+        return [child];
+      });
+    };
+    transformChildren(tree);
+  };
+}
 
 function buildSuggestions(members, tasks, messages) {
   const latestUserMessage = [...messages].reverse().find((message) => message.role === "user")?.text || "";
@@ -252,7 +277,8 @@ export default function ChatWidget({ members = [], onDataChanged }) {
                   <span className="select-text whitespace-pre-wrap break-words">{m.text}</span>
                 ) : (
                   <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
+                    remarkPlugins={[remarkGfm, remarkMath, remarkChatBreaks]}
+                    rehypePlugins={[rehypeKatex]}
                     components={{
                       p: ({ children }) => <p className="my-1 first:mt-0 last:mb-0">{children}</p>,
                       h1: ({ children }) => <h1 className="mb-1 mt-2 text-base font-semibold first:mt-0">{children}</h1>,
@@ -282,7 +308,7 @@ export default function ChatWidget({ members = [], onDataChanged }) {
                       hr: () => <hr className="my-2 border-line" />,
                     }}
                   >
-                    {m.text}
+                    {prepareChatMarkdown(m.text)}
                   </ReactMarkdown>
                 )}
                 {m.confirmations?.map((confirmation) => (
