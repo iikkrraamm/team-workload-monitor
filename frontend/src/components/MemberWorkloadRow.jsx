@@ -1,3 +1,4 @@
+import { Loader2 } from "lucide-react";
 import Card from "./ui/Card";
 import Avatar from "./ui/Avatar";
 import Button from "./ui/Button";
@@ -11,7 +12,7 @@ const PROGRESS_COLOR = {
   overload: "bg-status-overload",
 };
 
-export default function MemberWorkloadRow({ entry, onShowDetails, onApplySuggestion }) {
+export default function MemberWorkloadRow({ entry, onShowDetails, onApplySuggestion, applyingSuggestionId }) {
   const m = entry;
   return (
     <Card className="mb-3.5 p-5">
@@ -65,8 +66,20 @@ export default function MemberWorkloadRow({ entry, onShowDetails, onApplySuggest
                 </div>
                 <div className="text-[12px] text-ink-soft">{s.reason}</div>
               </div>
-              <Button variant="primary" size="sm" onClick={() => onApplySuggestion(s)}>
-                Terapkan
+              <Button
+                variant="primary"
+                size="sm"
+                className="min-w-[112px]"
+                disabled={applyingSuggestionId !== null}
+                aria-busy={applyingSuggestionId === s.task_id}
+                onClick={() => onApplySuggestion(s)}
+              >
+                {applyingSuggestionId === s.task_id ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                    Menerapkan...
+                  </>
+                ) : "Terapkan"}
               </Button>
             </div>
           ))}

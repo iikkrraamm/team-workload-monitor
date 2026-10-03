@@ -59,10 +59,13 @@ export default function WorkloadPage({ members }) {
   const [burnout, setBurnout] = useState([]);
   const [detailMember, setDetailMember] = useState(null);
   const [detailData, setDetailData] = useState(null);
+  const [applyingSuggestionId, setApplyingSuggestionId] = useState(null);
 
   const load = useCallback(() => {
-    api.getWorkload(period, referenceDate).then(setData).catch(console.error);
-    api.getBurnout().then(setBurnout).catch(console.error);
+    return Promise.all([
+      api.getWorkload(period, referenceDate).then(setData).catch(console.error),
+      api.getBurnout().then(setBurnout).catch(console.error),
+    ]);
   }, [period, referenceDate]);
 
   useEffect(() => {
@@ -93,12 +96,19 @@ export default function WorkloadPage({ members }) {
   };
 
   const applySuggestion = async (s) => {
-    if (s.action === "reassign") {
-      await api.updateTask(s.task_id, { assignee_id: s.suggested_assignee_id });
-    } else {
-      await api.updateTask(s.task_id, { due_date: s.suggested_new_due_date });
+    setApplyingSuggestionId(s.task_id);
+    try {
+      if (s.action === "reassign") {
+        await api.updateTask(s.task_id, { assignee_id: s.suggested_assignee_id });
+      } else {
+        await api.updateTask(s.task_id, { due_date: s.suggested_new_due_date });
+      }
+      await load();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setApplyingSuggestionId(null);
     }
-    load();
   };
 
   const chartData =
@@ -217,6 +227,7 @@ export default function WorkloadPage({ members }) {
             entry={m}
             onShowDetails={() => setDetailMember(m.member)}
             onApplySuggestion={applySuggestion}
+            applyingSuggestionId={applyingSuggestionId}
           />
         ))}
       </div>
