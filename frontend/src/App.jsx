@@ -10,11 +10,13 @@ import WorkloadPage from "./pages/WorkloadPage";
 import TeamPage from "./pages/TeamPage";
 import ActivitiesPage from "./pages/ActivitiesPage";
 import SqlPage from "./pages/SqlPage";
+import WhatsAppPage from "./pages/WhatsAppPage";
 
 export default function App() {
   const [page, setPage] = useState("dashboard");
   const [members, setMembers] = useState([]);
   const [refreshSignal, setRefreshSignal] = useState(0);
+  const [whatsappEnabled, setWhatsappEnabled] = useState(false);
 
   const loadMembers = useCallback(() => {
     api.getMembers().then(setMembers).catch(console.error);
@@ -24,11 +26,21 @@ export default function App() {
     loadMembers();
   }, [loadMembers]);
 
+  useEffect(() => {
+    api.getFeatures()
+      .then((features) => setWhatsappEnabled(features.whatsapp === true))
+      .catch(() => setWhatsappEnabled(false));
+  }, []);
+
+  useEffect(() => {
+    if (!whatsappEnabled && page === "whatsapp") setPage("dashboard");
+  }, [page, whatsappEnabled]);
+
   const bump = () => setRefreshSignal((n) => n + 1);
 
   return (
     <div className="flex min-h-screen bg-canvas">
-      <Sidebar page={page} setPage={setPage} />
+      <Sidebar page={page} setPage={setPage} whatsappEnabled={whatsappEnabled} />
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-x-hidden">
         <MobileTopBar />
@@ -38,6 +50,7 @@ export default function App() {
           {page === "workload" && <WorkloadPage members={members} key={refreshSignal} />}
           {page === "team" && <TeamPage members={members} reload={loadMembers} />}
           {page === "activities" && <ActivitiesPage members={members} />}
+          {whatsappEnabled && page === "whatsapp" && <WhatsAppPage />}
           {/* No key={refreshSignal}: remounting would wipe the editor. */}
           {page === "sql" && (
             <SqlPage
@@ -50,7 +63,7 @@ export default function App() {
         </main>
       </div>
 
-      <MobileTabBar page={page} setPage={setPage} />
+      <MobileTabBar page={page} setPage={setPage} whatsappEnabled={whatsappEnabled} />
       <ChatWidget
         members={members}
         onDataChanged={() => {

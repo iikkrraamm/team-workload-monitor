@@ -61,6 +61,15 @@ def init_db():
             FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS schedules (
+            id TEXT PRIMARY KEY,
+            prompt TEXT NOT NULL,
+            recipient TEXT NOT NULL,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS saved_queries (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,

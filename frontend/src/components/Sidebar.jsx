@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { NAV_ITEMS } from "./NavItems";
 import ThemeToggle from "./ThemeToggle";
 
-export default function Sidebar({ page, setPage }) {
+export default function Sidebar({ page, setPage, whatsappEnabled }) {
   return (
     <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-line/70 bg-surface/70 backdrop-blur-xl md:flex">
       <div className="flex items-center gap-3 px-6 pt-6 pb-5">
@@ -16,7 +16,7 @@ export default function Sidebar({ page, setPage }) {
       </div>
 
       <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3">
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter((item) => item.id !== "whatsapp" || whatsappEnabled).map((item) => {
           const Icon = item.icon;
           const active = page === item.id;
           return (
