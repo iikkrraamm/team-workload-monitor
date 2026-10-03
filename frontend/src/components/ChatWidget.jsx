@@ -1,22 +1,68 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Bot, Grip, Maximize2, MessageCircle, Minimize2, Send, X } from "lucide-react";
 import clsx from "clsx";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { api } from "../lib/api";
 
-function buildSuggestions(members, tasks) {
+function buildSuggestions(members, tasks, messages) {
+  const latestUserMessage = [...messages].reverse().find((message) => message.role === "user")?.text || "";
+  const normalizedMessage = latestUserMessage.toLocaleLowerCase();
+  const sentSuggestions = new Set(
+    messages
+      .filter((message) => message.role === "user")
+      .map((message) => message.text.trim().toLocaleLowerCase())
+  );
+  const mentionedTask = tasks.find((task) =>
+    normalizedMessage.includes(task.title.toLocaleLowerCase())
+  );
+  const mentionedMember = members.find((member) =>
+    normalizedMessage.includes(member.name.toLocaleLowerCase())
+  );
+  const workloadContext = /workload|beban|kapasitas|sibuk|overload/i.test(latestUserMessage);
   const suggestions = [];
-  const member = members[0];
-  const task = tasks.find((item) => item.status === "in_progress")
-    || tasks.find((item) => item.status === "todo");
+  const add = (suggestion) => {
+    if (suggestion && !sentSuggestions.has(suggestion.toLocaleLowerCase())) {
+      suggestions.push(suggestion);
+    }
+  };
 
-  if (member) suggestions.push(`Cek workload ${member.name} minggu ini`);
-  if (task) suggestions.push(`Tampilkan status tugas "${task.title}"`);
-  if (task?.status === "todo") suggestions.push(`Mulai task "${task.title}"`);
-  if (member) suggestions.push(`Tugas apa yang sedang dikerjakan ${member.name}?`);
-  if (!suggestions.length) suggestions.push("Ringkas workload tim minggu ini");
+  if (mentionedTask) {
+    if (mentionedTask.status === "todo") add(`Mulai task "${mentionedTask.title}"`);
+    if (mentionedTask.status === "in_progress") add(`Tandai tugas "${mentionedTask.title}" selesai`);
+    if (mentionedTask.status === "done") add(`Buat tugas lanjutan dari "${mentionedTask.title}"`);
+    add(`Tampilkan status tugas "${mentionedTask.title}"`);
+    add(`Ubah deadline tugas "${mentionedTask.title}"`);
+  }
 
+  if (mentionedMember) {
+    if (workloadContext) add(`Tampilkan tugas aktif ${mentionedMember.name}`);
+    else add(`Cek workload ${mentionedMember.name} minggu ini`);
+    add(`Tugas apa yang belum selesai untuk ${mentionedMember.name}?`);
+    add(`Tugas apa yang sedang dikerjakan ${mentionedMember.name}?`);
+  } else if (workloadContext) {
+    add("Siapa yang workload-nya paling tinggi minggu ini?");
+    add("Tampilkan ringkasan workload seluruh tim minggu ini");
+  }
+
+  const priorityRank = { urgent: 0, high: 1, medium: 2, low: 3 };
+  const activeTasks = tasks
+    .filter((task) => task.status !== "done")
+    .sort((left, right) => (priorityRank[left.priority] ?? 4) - (priorityRank[right.priority] ?? 4));
+  activeTasks.forEach((task) => {
+    if (task.status === "todo") add(`Mulai task "${task.title}"`);
+    else add(`Tampilkan status tugas "${task.title}"`);
+  });
+
+  if (mentionedMember && activeTasks.length) {
+    const memberTask = activeTasks.find((task) => task.assignee_id === mentionedMember.id);
+    if (memberTask?.status === "todo") add(`Mulai task "${memberTask.title}"`);
+    if (memberTask?.status === "in_progress") add(`Tampilkan status tugas "${memberTask.title}"`);
+  }
+
+  members.forEach((member) => add(`Cek workload ${member.name} minggu ini`));
+  add("Tampilkan semua tugas yang belum dikerjakan");
+  add("Ringkas workload tim minggu ini");
   return suggestions.slice(0, 4);
 }
 
@@ -46,6 +92,8 @@ export default function ChatWidget({ members = [], onDataChanged }) {
   const [sending, setSending] = useState(false);
   const [confirmationBusy, setConfirmationBusy] = useState(null);
   const textareaRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const wasOpenRef = useRef(false);
   const resizeStart = useRef(null);
 
   const refreshSuggestions = () => {
@@ -55,6 +103,20 @@ export default function ChatWidget({ members = [], onDataChanged }) {
   useEffect(() => {
     if (open) refreshSuggestions();
   }, [open]);
+
+  useLayoutEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!open || !container) {
+      wasOpenRef.current = false;
+      return;
+    }
+    if (!wasOpenRef.current) {
+      container.scrollTop = container.scrollHeight;
+    } else {
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    }
+    wasOpenRef.current = true;
+  }, [messages, open, sending]);
 
   const resizePanel = (event) => {
     if (!resizeStart.current) return;
@@ -175,7 +237,7 @@ export default function ChatWidget({ members = [], onDataChanged }) {
             </button>
           </div>
 
-          <div className="flex-1 space-y-2.5 overflow-y-auto px-4 py-4">
+          <div ref={messagesContainerRef} className="flex-1 space-y-2.5 overflow-y-auto px-4 py-4">
             {messages.map((m, i) => (
               <div
                 key={i}
@@ -277,7 +339,7 @@ export default function ChatWidget({ members = [], onDataChanged }) {
           </div>
 
           <div className="flex gap-1.5 overflow-x-auto px-4 pb-2.5">
-            {buildSuggestions(members, tasks).map((s) => (
+            {buildSuggestions(members, tasks, messages).map((s) => (
               <button
                 key={s}
                 onClick={() => send(s)}
