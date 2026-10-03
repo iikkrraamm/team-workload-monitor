@@ -42,6 +42,18 @@ def _order_by_clause(statuses):
     ?sort=due_asc|due_desc overrides that; anything else is ignored.
     """
     sort = request.args.get("sort")
+    if sort == "kanban":
+        return (
+            " ORDER BY CASE status WHEN 'todo' THEN 0 WHEN 'in_progress' THEN 1 "
+            "WHEN 'done' THEN 2 ELSE 3 END ASC, "
+            "CASE WHEN status = 'done' THEN due_date END DESC, "
+            "CASE WHEN status != 'done' THEN due_date END ASC, "
+            f"{_PRIORITY_RANK_SQL} ASC, "
+            "CASE WHEN status = 'done' THEN created_at END DESC, "
+            "CASE WHEN status != 'done' THEN created_at END ASC, "
+            "CASE WHEN status = 'done' THEN id END DESC, "
+            "CASE WHEN status != 'done' THEN id END ASC"
+        )
     if sort not in ("due_asc", "due_desc"):
         sort = "due_desc" if statuses and set(statuses) == {"done"} else "due_asc"
     if sort == "due_desc":

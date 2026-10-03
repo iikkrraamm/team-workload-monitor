@@ -13,7 +13,7 @@ import TaskModal from "../components/TaskModal";
 import TaskListView from "../components/TaskListView";
 
 const VIEW_STORAGE_KEY = "tasks-view-mode";
-const LIST_PAGE_SIZE = 20;
+const LIST_PAGE_SIZE = 30;
 const SEARCH_DEBOUNCE_MS = 300;
 
 const VIEW_OPTIONS = [
@@ -89,11 +89,12 @@ export default function TasksPage({ members, refreshSignal }) {
     return () => clearTimeout(t);
   }, [filterQ]);
 
-  // List data (server-paginated).
+  // List data (server-paginated and incrementally appended).
   const [listTasks, setListTasks] = useState([]);
   const [listTotal, setListTotal] = useState(0);
   const [listPage, setListPage] = useState(1);
   const [listLoading, setListLoading] = useState(true);
+  const [listLoadingMore, setListLoadingMore] = useState(false);
 
   const [allProjects, setAllProjects] = useState([]);
   const [formTask, setFormTask] = useState(null);
@@ -119,13 +120,9 @@ export default function TasksPage({ members, refreshSignal }) {
   const listParams = () => ({
     ...filterParams(),
     ...(filterStatus.length ? { status: filterStatus } : {}),
+    sort: "kanban",
   });
   const listFilterKey = JSON.stringify(listParams());
-
-  // Any filter changing invalidates the list's current page — without this
-  // you could be stuck on "page 4" after a filter narrows the result set
-  // down to one page.
-  useEffect(() => setListPage(1), [listFilterKey]);
 
   // Fetch List data only while that view is active — Kanban's three columns
   // fetch independently inside KanbanColumn itself.
@@ -134,8 +131,11 @@ export default function TasksPage({ members, refreshSignal }) {
     if (viewMode !== "list") return undefined;
     let cancelled = false;
     setListLoading(true);
+    setListLoadingMore(false);
+    setListTasks([]);
+    setListPage(1);
     api
-      .getTasksPage(listParams(), listPage, LIST_PAGE_SIZE)
+      .getTasksPage(listParams(), 1, LIST_PAGE_SIZE)
       .then((data) => {
         if (cancelled) return;
         setListTasks(data.items);
@@ -152,7 +152,24 @@ export default function TasksPage({ members, refreshSignal }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, listFilterKey, listPage, refreshSignal, reloadTick]);
+  }, [viewMode, listFilterKey, refreshSignal, reloadTick]);
+
+  const loadMoreListTasks = () => {
+    if (listLoading || listLoadingMore || listTasks.length >= listTotal) return;
+    setListLoadingMore(true);
+    api
+      .getTasksPage(listParams(), listPage + 1, LIST_PAGE_SIZE)
+      .then((data) => {
+        setListTasks((prev) => [...prev, ...data.items]);
+        setListTotal(data.total);
+        setListPage((page) => page + 1);
+        setListLoadingMore(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setListLoadingMore(false);
+      });
+  };
 
   // Project suggestions must come from ALL tasks, not the filtered/paginated
   // list — otherwise filtering by one project would hide every other
@@ -167,8 +184,6 @@ export default function TasksPage({ members, refreshSignal }) {
   const memberById = Object.fromEntries(members.map((m) => [m.id, m]));
   const memberOptions = members.map((m) => ({ value: m.id, label: m.name }));
   const projectOptions = allProjects.map((p) => ({ value: p, label: p }));
-  const listPageCount = Math.max(1, Math.ceil(listTotal / LIST_PAGE_SIZE));
-
   const buildDefaultDraft = () => ({
     title: "",
     description: "",
@@ -372,10 +387,9 @@ export default function TasksPage({ members, refreshSignal }) {
           tasks={listTasks}
           memberById={memberById}
           loading={listLoading}
-          page={listPage}
-          pageCount={listPageCount}
+          loadingMore={listLoadingMore}
           total={listTotal}
-          onPageChange={setListPage}
+          onLoadMore={loadMoreListTasks}
           onOpen={(t) => setFormTask(t)}
           onCopy={openCopy}
           onQuickUpdate={quickUpdate}

@@ -1,10 +1,10 @@
-import { ChevronLeft, ChevronRight, Copy, Folder } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Copy, Folder, Loader2 } from "lucide-react";
 import { PriorityBadge, CategoryBadge, RiskBadge } from "./ui/Badge";
 import { ScheduleBlock } from "./ScheduleInfo";
 import { CapacityText, HistoryNote, WorkDaysText, DeadlineRange } from "./TaskInfo";
 import Avatar, { initials } from "./ui/Avatar";
 import EmptyState from "./ui/EmptyState";
-import Button from "./ui/Button";
 import { SkeletonTaskCard, SkeletonTaskRow } from "./ui/Skeleton";
 
 const STATUS_OPTIONS = [
@@ -44,14 +44,31 @@ export default function TaskListView({
   tasks,
   memberById,
   loading,
-  page,
-  pageCount,
+  loadingMore,
   total,
-  onPageChange,
+  onLoadMore,
   onOpen,
   onCopy,
   onQuickUpdate,
 }) {
+  const sentinelRef = useRef(null);
+  const hasMore = tasks.length < total;
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore) return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) onLoadMore();
+      },
+      { rootMargin: "120px" }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+    // The observer is recreated when loading state or result length changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMore, loading, loadingMore, tasks.length]);
+
   // Loading vs. genuinely empty must look different, or a slow network and
   // "no tasks match this filter" are indistinguishable to the user.
   if (loading) {
@@ -262,24 +279,23 @@ export default function TaskListView({
         })}
       </div>
 
-      {pageCount > 1 && (
-        <div className="mt-4 flex items-center justify-between">
+      {hasMore && (
+        <div ref={sentinelRef} className="flex flex-col items-center gap-2 py-4">
           <span className="text-[12.5px] text-ink-soft">
-            {total} tugas · Halaman {page} dari {pageCount}
+            {tasks.length} dari {total} tugas
           </span>
-          <div className="flex items-center gap-1.5">
-            <Button variant="ghost" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
-              <ChevronLeft size={15} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={page >= pageCount}
-              onClick={() => onPageChange(page + 1)}
+          {loadingMore ? (
+            <span className="flex items-center gap-1.5 text-[12px] text-ink-faint">
+              <Loader2 size={13} className="animate-spin" /> Memuat lebih banyak...
+            </span>
+          ) : (
+            <button
+              onClick={onLoadMore}
+              className="text-[12px] font-medium text-accent hover:underline"
             >
-              <ChevronRight size={15} />
-            </Button>
-          </div>
+              Muat lebih banyak
+            </button>
+          )}
         </div>
       )}
     </div>
