@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, Grip, Maximize2, MessageCircle, Minimize2, Send, X } from "lucide-react";
 import clsx from "clsx";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { api } from "../lib/api";
 
 function buildSuggestions(members, tasks) {
@@ -184,7 +186,43 @@ export default function ChatWidget({ members = [], onDataChanged }) {
                     : "bg-ink/[0.05] text-ink rounded-bl-md"
                 )}
               >
-                {m.text}
+                {m.role === "user" ? (
+                  <span className="select-text whitespace-pre-wrap break-words">{m.text}</span>
+                ) : (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      p: ({ children }) => <p className="my-1 first:mt-0 last:mb-0">{children}</p>,
+                      h1: ({ children }) => <h1 className="mb-1 mt-2 text-base font-semibold first:mt-0">{children}</h1>,
+                      h2: ({ children }) => <h2 className="mb-1 mt-2 text-sm font-semibold first:mt-0">{children}</h2>,
+                      h3: ({ children }) => <h3 className="mb-1 mt-2 text-[13px] font-semibold first:mt-0">{children}</h3>,
+                      ul: ({ children }) => <ul className="my-1 list-disc space-y-0.5 pl-5">{children}</ul>,
+                      ol: ({ children }) => <ol className="my-1 list-decimal space-y-0.5 pl-5">{children}</ol>,
+                      li: ({ children }) => <li className="pl-0.5">{children}</li>,
+                      blockquote: ({ children }) => <blockquote className="my-2 border-l-2 border-line pl-3 text-ink-soft">{children}</blockquote>,
+                      code: ({ className, children }) => (
+                        <code className={clsx(
+                          "font-mono",
+                          className ? "text-[12px]" : "rounded bg-ink/[0.07] px-1 py-0.5 text-[0.92em]",
+                          className
+                        )}>{children}</code>
+                      ),
+                      pre: ({ children }) => <pre className="my-2 max-w-full overflow-x-auto rounded-md border border-line/70 bg-canvas px-3 py-2 text-[12px] leading-relaxed">{children}</pre>,
+                      table: ({ children }) => (
+                        <div className="my-2 max-w-full overflow-x-auto rounded-md border border-line/70">
+                          <table className="w-max min-w-full border-collapse text-left text-[12px]">{children}</table>
+                        </div>
+                      ),
+                      thead: ({ children }) => <thead className="bg-ink/[0.04]">{children}</thead>,
+                      th: ({ children }) => <th className="whitespace-nowrap border-b border-line px-2.5 py-1.5 font-semibold">{children}</th>,
+                      td: ({ children }) => <td className="border-b border-line/70 px-2.5 py-1.5 align-top">{children}</td>,
+                      a: ({ children, href }) => <a className="text-accent underline underline-offset-2" href={href}>{children}</a>,
+                      hr: () => <hr className="my-2 border-line" />,
+                    }}
+                  >
+                    {m.text}
+                  </ReactMarkdown>
+                )}
                 {m.confirmations?.map((confirmation) => (
                   <div key={confirmation.token} className="mt-3 w-full min-w-[240px] space-y-2 rounded-lg border border-line bg-surface p-3 text-ink shadow-soft">
                     <div className="text-[12px] font-semibold text-ink">

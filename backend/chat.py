@@ -104,6 +104,8 @@ TOOLS = [
                                 "assignee_name": {"type": "string"},
                                 "priority": {"type": "string", "enum": ["urgent", "high", "medium", "low"]},
                                 "estimated_hours": {"type": "number", "minimum": 0.1},
+                                "category": {"type": "string", "enum": ["kerja", "meeting", "cuti", "lainnya"]},
+                                "project": {"type": "string", "description": "Nama project; isi string kosong untuk menghapus project."},
                                 "start_date": {"type": "string", "description": "Tanggal YYYY-MM-DD."},
                                 "due_date": {"type": "string", "description": "Tanggal YYYY-MM-DD."},
                                 "status": {"type": "string", "enum": ["todo", "in_progress", "done"]},
@@ -132,6 +134,8 @@ TOOLS = [
                     "assignee_name": {"type": "string"},
                     "priority": {"type": "string", "enum": ["urgent", "high", "medium", "low"]},
                     "estimated_hours": {"type": "number", "minimum": 0.1},
+                    "category": {"type": "string", "enum": ["kerja", "meeting", "cuti", "lainnya"]},
+                    "project": {"type": "string", "description": "Nama project; isi string kosong untuk menghapus project."},
                     "start_date": {"type": "string", "description": "Tanggal mulai baru dengan format YYYY-MM-DD. Jika diminta sama dengan deadline, isi sama dengan due_date."},
                     "due_date": {"type": "string", "description": "Deadline baru dengan format YYYY-MM-DD."},
                 },
@@ -312,6 +316,14 @@ def _prepare_task_update(db, task_input, known_task_ids=None):
         if hours <= 0:
             return None, None, {"error": f'Estimasi task "{title}" harus lebih dari nol.'}
         updates["estimated_hours"] = hours
+    if "category" in task_input:
+        if task_input["category"] not in {"kerja", "meeting", "cuti", "lainnya"}:
+            return None, None, {"error": f'Kategori task "{title}" tidak valid.'}
+        updates["category"] = task_input["category"]
+    if "project" in task_input:
+        if not isinstance(task_input["project"], str):
+            return None, None, {"error": f'Project task "{title}" tidak valid.'}
+        updates["project"] = task_input["project"].strip()
     for field, label in (("start_date", "Tanggal mulai"), ("due_date", "Deadline")):
         if field in task_input:
             try:
@@ -347,6 +359,8 @@ def _make_update_confirmation(db, prepared_updates):
         "assignee_id": "Penanggung jawab",
         "priority": "Prioritas",
         "estimated_hours": "Estimasi jam",
+        "category": "Kategori",
+        "project": "Project",
         "start_date": "Tanggal mulai",
         "due_date": "Deadline",
         "status": "Status",
@@ -430,7 +444,7 @@ def confirm_pending_action(db, token, confirmed):
             for task, _ in rows:
                 db.execute("DELETE FROM tasks WHERE id = ?", (task["id"],))
         else:
-            allowed_fields = {"title", "description", "assignee_id", "priority", "estimated_hours", "start_date", "due_date", "status"}
+            allowed_fields = {"title", "description", "assignee_id", "priority", "estimated_hours", "category", "project", "start_date", "due_date", "status"}
             for task, entry in rows:
                 updates = entry.get("updates", {})
                 if not updates or not set(updates).issubset(allowed_fields):
@@ -688,7 +702,7 @@ def chat_with_ai(db, history, compute_member_workload, status_label_id, validate
             "pilih tool yang sesuai hanya ketika diperlukan. Untuk informasi yang kurang atau ambigu, tanyakan klarifikasi "
             "dan jangan menebak target perubahan. Jangan menghapus data kecuali diminta dengan jelas. "
             "Untuk permintaan penghapusan, jangan meminta ID, deadline, atau deskripsi. Cari task memakai list_tasks, gunakan ID dari hasilnya untuk delete_tasks, lalu tampilkan preview task dan tunggu konfirmasi user. Jika pencarian menghasilkan beberapa task dan maksud user tidak menyatakan semuanya, tampilkan kandidat untuk dipilih tanpa menyiapkan penghapusan. "
-            "Untuk update, cari task berdasarkan kata/judul yang disebut user memakai list_tasks, gunakan ID hasilnya di update_task_details, update_task_status, atau update_tasks, lalu langsung tampilkan preview dan minta konfirmasi. Jangan meminta ID kepada user. Jika hanya satu task yang cocok, jangan menanyakan identitas lagi; jika beberapa cocok dan target belum jelas, minta user memilih kandidat. Jangan meminta field yang tidak diubah; tanyakan hanya jika nilai perubahan memang belum disebut atau ambigu. "
+            "Untuk update, cari task berdasarkan kata/judul yang disebut user memakai list_tasks, gunakan ID hasilnya di update_task_details, update_task_status, atau update_tasks, lalu langsung tampilkan preview dan minta konfirmasi. Field kategori menerima kerja, meeting, cuti, atau lainnya; project adalah nama bebas dan dapat dikosongkan. Jangan meminta ID kepada user. Jika hanya satu task yang cocok, jangan menanyakan identitas lagi; jika beberapa cocok dan target belum jelas, minta user memilih kandidat. Jangan meminta field yang tidak diubah; tanyakan hanya jika nilai perubahan memang belum disebut atau ambigu. "
             "Jika pengguna menyebut tanggal mulai, selalu isi start_date sesuai tanggal itu dan jangan menggantinya dengan hari ini. Jika pengguna meminta tanggal mulai sama dengan due date/deadline, isi keduanya dengan tanggal yang sama. Hari ini hanya default bila tanggal mulai tidak disebutkan. "
             "Saat membuat task, gunakan priority medium dan estimated_hours 1 bila pengguna tidak menyebutkannya. "
             "Jika pengguna meminta beberapa tugas, gunakan create_tasks dan sertakan semuanya dalam satu pemanggilan. "
