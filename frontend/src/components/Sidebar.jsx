@@ -4,7 +4,7 @@ import ThemeToggle from "./ThemeToggle";
 
 export default function Sidebar({ page, setPage }) {
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-line/70 bg-surface/70 backdrop-blur-xl md:flex">
+    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-line/70 bg-surface/70 backdrop-blur-xl md:flex">
       <div className="flex items-center gap-3 px-6 pt-6 pb-5">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-solid text-[13px] font-bold text-white">
           WM
@@ -15,7 +15,7 @@ export default function Sidebar({ page, setPage }) {
         </div>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-0.5 px-3">
+      <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const active = page === item.id;
