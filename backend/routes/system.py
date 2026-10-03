@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, request
 
 from chat import AIError, chat_with_ai, confirm_pending_action
 from database import get_db
-from routes.sql import validate_generated_query
+from routes.sql import execute_generated_query, validate_generated_query
 from workload import STATUS_LABEL_ID, compute_member_workload
 
 
@@ -30,7 +30,7 @@ def ai_chat():
     try:
         result = chat_with_ai(
             get_db(), history, compute_member_workload, STATUS_LABEL_ID,
-            validate_generated_query,
+            validate_generated_query, execute_generated_query,
         )
     except AIError as exc:
         return jsonify({"error": str(exc)}), 502

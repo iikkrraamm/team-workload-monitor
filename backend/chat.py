@@ -12,6 +12,19 @@ class AIError(Exception):
     pass
 
 
+WEEKDAY_NAMES_ID = ("Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu")
+MONTH_NAMES_ID = (
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+)
+
+
+def _format_date_context(current_date):
+    weekday = WEEKDAY_NAMES_ID[current_date.weekday()]
+    month = MONTH_NAMES_ID[current_date.month - 1]
+    return f"{weekday}, {current_date.day} {month} {current_date.year} ({current_date.isoformat()})"
+
+
 TOOLS = [
     {
         "type": "function",
@@ -193,6 +206,21 @@ TOOLS = [
                     "period": {"type": "string", "enum": ["day", "week", "month"]},
                 },
                 "required": ["period"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "query_database",
+            "description": "Jalankan satu query SELECT/WITH read-only jika pertanyaan data tidak dapat dijawab oleh tool khusus. Jangan gunakan untuk mengubah data atau menyimpan query.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sql": {"type": "string", "description": "Satu query SELECT atau WITH ... SELECT menggunakan schema yang tersedia."},
+                },
+                "required": ["sql"],
                 "additionalProperties": False,
             },
         },
@@ -474,7 +502,13 @@ def confirm_pending_action(db, token, confirmed):
     }
 
 
-def _execute_tool(name, arguments, db, compute_member_workload, status_label_id, validate_sql, known_task_ids=None):
+def _execute_tool(name, arguments, db, compute_member_workload, status_label_id, validate_sql, execute_sql, known_task_ids=None):
+    if name == "query_database":
+        sql = str(arguments.get("sql", "")).strip()
+        if not sql:
+            return {"error": "Query tidak boleh kosong."}
+        return execute_sql(sql)
+
     if name == "list_tasks":
         clauses = []
         params = []
@@ -685,8 +719,9 @@ def _execute_tool(name, arguments, db, compute_member_workload, status_label_id,
     return {"error": "Tool tidak dikenal."}
 
 
-def chat_with_ai(db, history, compute_member_workload, status_label_id, validate_sql):
+def chat_with_ai(db, history, compute_member_workload, status_label_id, validate_sql, execute_sql):
     client, model = _make_client()
+    today = date.today()
     schema_rows = db.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
     ).fetchall()
@@ -707,8 +742,9 @@ def chat_with_ai(db, history, compute_member_workload, status_label_id, validate
             "Saat membuat task, gunakan priority medium dan estimated_hours 1 bila pengguna tidak menyebutkannya. "
             "Jika pengguna meminta beberapa tugas, gunakan create_tasks dan sertakan semuanya dalam satu pemanggilan. "
             "Jika pengguna meminta mengubah beberapa task, gunakan update_tasks dan sertakan semua task serta field yang diminta. "
-            "Tanggal hari ini: " + date.today().isoformat() + ". "
-            "Untuk SQL, buat hanya satu query SELECT/WITH read-only dengan schema berikut; tool akan memvalidasinya. "
+            "Tanggal dan hari ini: " + _format_date_context(today) + ". Gunakan tanggal ini sebagai acuan untuk menghitung hari relatif seperti besok atau minggu depan, jangan menebak nama harinya. "
+            "Jika pengguna meminta informasi yang tidak tersedia melalui tool khusus, kamu boleh membuat dan menjalankan query sendiri dengan query_database. Gunakan hanya satu SELECT/WITH read-only, jangan pernah mengubah data. Pilih kolom secukupnya; hasil query dibatasi. Gunakan save_sql_query hanya jika pengguna secara eksplisit meminta menyimpan query. "
+            "Untuk SQL, gunakan schema berikut; eksekusi read-only akan memvalidasi query. "
             "Schema: " + "\n".join(schema)
         ),
     }]
@@ -746,6 +782,7 @@ def chat_with_ai(db, history, compute_member_workload, status_label_id, validate
                         compute_member_workload,
                         status_label_id,
                         validate_sql,
+                        execute_sql,
                         known_task_ids,
                     )
                 except (ValueError, TypeError, KeyError, AttributeError) as exc:

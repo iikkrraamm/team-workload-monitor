@@ -38,6 +38,8 @@ MAX_ROWS = 1000
 TIMEOUT_SECONDS = 5
 MAX_SQL_LENGTH = 100_000
 MAX_NAME_LENGTH = 120
+CHAT_QUERY_MAX_ROWS = 50
+CHAT_QUERY_MAX_CELL_LENGTH = 500
 
 # Exports re-run the query and are allowed to be much larger than what the
 # results table shows.
@@ -97,10 +99,9 @@ def _open_connection(allow_write):
     return conn
 
 
-def validate_generated_query(sql):
-    """Validate generated SQL by running it through the normal read-only guard."""
+def _run_generated_query(sql, max_rows=None):
     if not sql or len(sql) > MAX_SQL_LENGTH:
-        return "Query kosong atau terlalu panjang"
+        return None, "Query kosong atau terlalu panjang"
 
     conn = _open_connection(allow_write=False)
     deadline = time.monotonic() + TIMEOUT_SECONDS
@@ -108,13 +109,48 @@ def validate_generated_query(sql):
     try:
         cursor = conn.execute(sql)
         if cursor.description is None:
-            return "Query harus menghasilkan data (SELECT)."
-        cursor.fetchone()
-        return None
+            return None, "Query harus menghasilkan data (SELECT)."
+        if max_rows is None:
+            cursor.fetchone()
+            return None, None
+
+        columns = [description[0] for description in cursor.description]
+        fetched = cursor.fetchmany(max_rows + 1)
+        truncated = len(fetched) > max_rows
+        rows = []
+        truncated_values = 0
+        for row in fetched[:max_rows]:
+            values = []
+            for value in row:
+                value = _serialize(value)
+                if isinstance(value, str) and len(value) > CHAT_QUERY_MAX_CELL_LENGTH:
+                    value = value[:CHAT_QUERY_MAX_CELL_LENGTH] + "..."
+                    truncated_values += 1
+                values.append(value)
+            rows.append(values)
+        return {
+            "columns": columns,
+            "rows": rows,
+            "row_count": len(rows),
+            "truncated": truncated,
+            "truncated_values": truncated_values,
+        }, None
     except sqlite3.Error as exc:
-        return _friendly_error(exc, allow_write=False)
+        return None, _friendly_error(exc, allow_write=False)
     finally:
         conn.close()
+
+
+def validate_generated_query(sql):
+    """Validate generated SQL by running it through the normal read-only guard."""
+    _, error = _run_generated_query(sql)
+    return error
+
+
+def execute_generated_query(sql):
+    """Run a chat-generated query read-only and return a bounded result set."""
+    result, error = _run_generated_query(sql, CHAT_QUERY_MAX_ROWS)
+    return {"error": error} if error else result
 
 
 def _serialize(value):
