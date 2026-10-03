@@ -11,10 +11,22 @@ import SegmentedControl from "../components/ui/SegmentedControl";
 import KanbanColumn from "../components/KanbanColumn";
 import TaskModal from "../components/TaskModal";
 import TaskListView from "../components/TaskListView";
+import { readPersistedFilters, writePersistedFilters } from "../lib/persistedFilters";
 
 const VIEW_STORAGE_KEY = "tasks-view-mode";
+const FILTER_STORAGE_KEY = "tasks-filter-state";
 const LIST_PAGE_SIZE = 30;
 const SEARCH_DEBOUNCE_MS = 300;
+const DEFAULT_FILTERS = {
+  status: [],
+  assignee: [],
+  priority: [],
+  category: [],
+  project: [],
+  q: "",
+  dueBefore: "",
+  dueAfter: "",
+};
 
 const VIEW_OPTIONS = [
   {
@@ -70,20 +82,32 @@ export default function TasksPage({ members, refreshSignal }) {
     }
   });
 
-  // Status filter exists only in the List view; in Kanban the status is the column.
-  const [filterStatus, setFilterStatus] = useState([]);
-  const [filterAssignee, setFilterAssignee] = useState([]);
-  const [filterPriority, setFilterPriority] = useState([]);
-  const [filterCategory, setFilterCategory] = useState([]);
-  const [filterProject, setFilterProject] = useState([]);
-  const [filterQ, setFilterQ] = useState("");
-  const [filterDueBefore, setFilterDueBefore] = useState("");
-  const [filterDueAfter, setFilterDueAfter] = useState("");
+  const [filters, setFilters] = useState(() => readPersistedFilters(FILTER_STORAGE_KEY, DEFAULT_FILTERS));
+  const filterStatus = filters.status;
+  const filterAssignee = filters.assignee;
+  const filterPriority = filters.priority;
+  const filterCategory = filters.category;
+  const filterProject = filters.project;
+  const filterQ = filters.q;
+  const filterDueBefore = filters.dueBefore;
+  const filterDueAfter = filters.dueAfter;
+  const setFilterStatus = (status) => setFilters((current) => ({ ...current, status }));
+  const setFilterAssignee = (assignee) => setFilters((current) => ({ ...current, assignee }));
+  const setFilterPriority = (priority) => setFilters((current) => ({ ...current, priority }));
+  const setFilterCategory = (category) => setFilters((current) => ({ ...current, category }));
+  const setFilterProject = (project) => setFilters((current) => ({ ...current, project }));
+  const setFilterQ = (q) => setFilters((current) => ({ ...current, q }));
+  const setFilterDueBefore = (dueBefore) => setFilters((current) => ({ ...current, dueBefore }));
+  const setFilterDueAfter = (dueAfter) => setFilters((current) => ({ ...current, dueAfter }));
+
+  useEffect(() => {
+    writePersistedFilters(FILTER_STORAGE_KEY, filters);
+  }, [filters]);
 
   // Debounced so fast typing in the search box doesn't fire a server
   // request per keystroke — both views now hit the server on every filter
   // change, so this matters more than it did with client-side filtering.
-  const [debouncedQ, setDebouncedQ] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState(filters.q);
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(filterQ), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(t);
@@ -257,14 +281,7 @@ export default function TasksPage({ members, refreshSignal }) {
   };
 
   const resetFilters = () => {
-    setFilterStatus([]);
-    setFilterAssignee([]);
-    setFilterPriority([]);
-    setFilterCategory([]);
-    setFilterProject([]);
-    setFilterQ("");
-    setFilterDueBefore("");
-    setFilterDueAfter("");
+    setFilters(DEFAULT_FILTERS);
   };
 
   return (

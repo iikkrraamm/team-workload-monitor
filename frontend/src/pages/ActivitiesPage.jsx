@@ -10,17 +10,35 @@ import { Input } from "../components/ui/Field";
 import MultiSelect from "../components/ui/MultiSelect";
 import ActivityCard from "../components/ActivityCard";
 import ActivityModal from "../components/ActivityModal";
+import { readPersistedFilters, writePersistedFilters } from "../lib/persistedFilters";
 
 const round2 = (n) => Math.round(n * 100) / 100;
+const FILTER_STORAGE_KEY = "activities-filter-state";
+const DEFAULT_FILTERS = {
+  member: [],
+  q: "",
+  dateFrom: startOfMonth(),
+  dateTo: "",
+};
 
 export default function ActivitiesPage({ members }) {
   const [activities, setActivities] = useState([]);
-  const [filterMember, setFilterMember] = useState([]);
-  const [filterQ, setFilterQ] = useState("");
+  const [filters, setFilters] = useState(() => readPersistedFilters(FILTER_STORAGE_KEY, DEFAULT_FILTERS));
+  const filterMember = filters.member;
+  const filterQ = filters.q;
+  const dateFrom = filters.dateFrom;
+  const dateTo = filters.dateTo;
+  const setFilterMember = (member) => setFilters((current) => ({ ...current, member }));
+  const setFilterQ = (q) => setFilters((current) => ({ ...current, q }));
+  const setDateFrom = (dateFrom) => setFilters((current) => ({ ...current, dateFrom }));
+  const setDateTo = (dateTo) => setFilters((current) => ({ ...current, dateTo }));
+
+  useEffect(() => {
+    writePersistedFilters(FILTER_STORAGE_KEY, filters);
+  }, [filters]);
+
   // Defaults to the current month so the list doesn't grow forever; Reset
   // clears every filter, dates included, to show everything.
-  const [dateFrom, setDateFrom] = useState(() => startOfMonth());
-  const [dateTo, setDateTo] = useState("");
   const [formActivity, setFormActivity] = useState(null);
   const [quickTitle, setQuickTitle] = useState("");
   const [quickHours, setQuickHours] = useState("1");
@@ -96,10 +114,7 @@ export default function ActivitiesPage({ members }) {
   };
 
   const resetFilters = () => {
-    setFilterMember([]);
-    setFilterQ("");
-    setDateFrom("");
-    setDateTo("");
+    setFilters({ member: [], q: "", dateFrom: "", dateTo: "" });
   };
 
   // The API returns newest date first, so consecutive rows share a date.
