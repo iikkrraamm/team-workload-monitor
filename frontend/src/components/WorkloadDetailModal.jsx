@@ -9,22 +9,31 @@ const isExact = (n) => Math.abs(n * 100 - Math.round(n * 100)) < 1e-6;
 const approx = (n) => (isExact(n) ? fmt(n) : `≈ ${fmt(n)}`);
 
 // The working behind one task's hours, from the numbers the server used.
+// The estimate is shared evenly over the task's working days: Monday-Friday
+// between start and due, plus the due weekend when the task is due on a
+// Saturday/Sunday. Other weekend days carry no hours (the person is idle).
 function taskExplanation(t) {
   const estimate = Number(t.estimated_hours) || 0;
-  const weekend =
+  const weekendInSpan =
+    t.weekend_days_in_span > 0
+      ? `, termasuk ${t.weekend_days_in_span} hari akhir pekan karena due date jatuh di akhir pekan`
+      : "";
+  const weekendInWindow =
     t.weekend_days_in_window > 0 ? `, termasuk ${t.weekend_days_in_window} hari akhir pekan` : "";
   const lines = [];
 
   if (!t.prorated && !t.done_cutoff) {
-    lines.push(`Seluruh estimasi ${fmt(estimate)} jam jatuh di periode ini (${t.span_days} hari${weekend}).`);
+    lines.push(
+      `Seluruh estimasi ${fmt(estimate)} jam jatuh di periode ini (${t.span_days} hari kerja${weekendInSpan}).`
+    );
   } else {
     lines.push(
-      `Estimasi ${fmt(estimate)} jam dibagi rata ke ${t.span_days} hari kalender ` +
-        `(${t.span_start} → ${t.span_due}, akhir pekan ikut dihitung): ` +
+      `Estimasi ${fmt(estimate)} jam dibagi rata ke ${t.span_days} hari kerja ` +
+        `(${t.span_start} → ${t.span_due}${weekendInSpan}): ` +
         `${fmt(estimate)} ÷ ${t.span_days} = ${approx(t.hours_per_day)} jam/hari.`
     );
     lines.push(
-      `Periode ini mencakup ${t.days_in_window} hari${weekend}: ` +
+      `Periode ini mencakup ${t.days_in_window} hari kerja${weekendInWindow}: ` +
         `${fmt(estimate)} ÷ ${t.span_days} × ${t.days_in_window} = ${fmt(t.hours_in_window)} jam.`
     );
     if (t.done_cutoff) {
@@ -41,7 +50,7 @@ function taskExplanation(t) {
 
 function Summary({ s }) {
   const extra = s.capacity_extra_weekend_days > 0
-    ? ` (termasuk ${fmt(s.capacity_extra_weekend_days)} hari akhir pekan yang dihitung sebagai hari kerja)`
+    ? ` (termasuk ${fmt(s.capacity_extra_weekend_days)} hari akhir pekan karena ada tugas yang due-nya jatuh di akhir pekan)`
     : "";
   return (
     <div className="rounded-xl bg-ink/[0.04] px-4 py-3 text-[13px] text-ink">
@@ -55,7 +64,8 @@ function Summary({ s }) {
       </div>
       <div className="mt-1 text-[12px] text-ink-soft">
         Jam terpakai = tugas {fmt(s.task_hours)} + aktivitas {fmt(s.activity_hours)} jam. Jam tiap tugas dibagi
-        rata ke semua hari dari start sampai deadline, lalu yang dihitung hanya hari yang masuk periode ini.
+        rata ke hari kerja (Senin–Jumat) dari start sampai deadline; Sabtu/Minggu hanya ikut bila deadline-nya
+        jatuh di akhir pekan. Yang dihitung hanya hari yang masuk periode ini.
       </div>
     </div>
   );

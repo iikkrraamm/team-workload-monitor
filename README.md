@@ -10,8 +10,9 @@ overload, deteksi burnout, dan asisten chat AI untuk CRUD tugas secara cepat.
    tanggal, kapasitas tersedia, status jadwal, estimasi, sisa hari kerja, risiko).
    List punya filter **status** tambahan (hanya di mode List).
 2. **Workload harian, mingguan, bulanan** — dihitung dari estimasi jam tugas yang
-   disebar merata di sepanjang rentang tanggalnya, dibandingkan kapasitas jam/hari
-   tiap anggota.
+   disebar merata ke hari kerja (Senin–Jumat) dalam rentang tanggalnya,
+   dibandingkan kapasitas jam/hari tiap anggota. Sabtu/Minggu idle kecuali ada
+   tugas yang due-nya jatuh di akhir pekan.
 3. **Deteksi overload + saran pintar** — saat beban seseorang di atas 100% kapasitas,
    sistem menyarankan *reschedule* (tugas prioritas rendah digeser) atau
    *reassign* ke rekan tim yang masih longgar, mempertimbangkan prioritas tugas.
@@ -144,20 +145,31 @@ frontend/
 ## Cara Kerja Kalkulasi Workload (ringkas)
 
 - Setiap tugas punya `estimated_hours`, `start_date`, `due_date`. Jam tugas
-  disebar merata per hari dalam rentang tersebut.
+  disebar merata ke **hari kerja (Senin–Jumat)** dalam rentang tersebut. Tugas
+  Senin–Jumat 40 jam = 8 jam per hari kerja; tugas Jumat→Senin 8 jam = 4 jam
+  Jumat + 4 jam Senin. Sabtu/Minggu tidak menerima jam (beban turun dan status
+  menjadi Idle), **kecuali** tugas itu due di Sabtu/Minggu: maka akhir pekan
+  tempat due date itu berada ikut dibagi (hari due itu sendiri, ditambah Sabtu
+  sebelum due Minggu bila tugas sudah mulai). Akhir pekan lain di tengah tugas
+  yang panjang tidak ikut. Kapasitas diselaraskan: hari akhir pekan dihitung
+  sebagai hari kapasitas hanya bila ada tugas yang menaruh jam di hari itu
+  (tugas selesai tetap dihitung untuk hari-hari yang sudah lewat), sehingga jam
+  tidak pernah dibandingkan dengan kapasitas nol dan satu tugas Minggu saja
+  menambah 1 hari (6 hari kapasitas), bukan 7. Aturan ini sama dengan alokasi di
+  kartu tugas (risiko tidak cukup jam).
 - Workload periode = total jam tugas aktif dalam periode ÷ (kapasitas jam/hari
   anggota × jumlah hari periode) × 100%.
 - **Rincian kontribusi** (tombol di halaman Analisis Beban) menjumlah persis ke
   angka "jam terpakai" pada kartu, karena memakai aturan hitung yang sama:
-  estimasi tiap tugas dibagi rata ke semua hari kalender dari `start_date`
-  sampai `due_date` (akhir pekan ikut dihitung), lalu hanya hari yang masuk
-  periode yang dijumlahkan, ditambah jam aktivitas. Untuk tugas dengan deadline
-  lebih panjang dari periode, rincian menampilkan estimasi, jumlah hari
-  pembagi, jam per hari, jumlah hari di periode, dan sisa jam di luar periode.
-  Tugas cuti dan tugas selesai tampil dengan penanda; tugas selesai hanya
-  dihitung sampai hari ini. Hari akhir pekan menambah jam terpakai bila ada
-  tugas yang rentangnya melewatinya, tetapi kapasitas hanya menghitung hari
-  kerja (kecuali ada tugas yang deadline-nya jatuh di akhir pekan).
+  estimasi tiap tugas dibagi rata ke hari kerjanya dari `start_date` sampai
+  `due_date` (aturan di atas), lalu hanya hari yang masuk periode yang
+  dijumlahkan, ditambah jam aktivitas. Untuk tugas dengan deadline lebih panjang
+  dari periode, rincian menampilkan estimasi, jumlah hari kerja pembagi, jam per
+  hari, jumlah hari di periode, dan sisa jam di luar periode. Tugas cuti dan
+  tugas selesai tampil dengan penanda; tugas selesai hanya dihitung sampai hari
+  ini. Daftar "Sedang dikerjakan" di dashboard pada hari Sabtu/Minggu hanya
+  menampilkan tugas yang memang dikerjakan di akhir pekan itu, supaya tidak
+  bertentangan dengan status Idle.
 - Saran overload (halaman Analisis Beban) memprioritaskan tugas dengan prioritas
   terendah untuk dipindah lebih dulu. Hanya tugas kerja yang belum selesai yang
   bisa disarankan: tugas **Cuti/Libur** dan tugas **selesai** tidak pernah masuk
@@ -188,8 +200,10 @@ frontend/
 - **Status jadwal tugas** (Kanban dan List, hanya tugas `todo` / `in_progress`;
   tugas selesai dan cuti tidak dinilai):
   - *Seharusnya* (should-be progress) = hari yang sudah berjalan ÷ jumlah hari
-    dari `start_date` sampai `due_date` × 100%, dengan hari kalender (akhir
-    pekan ikut) seperti pembagian jam. Start tanggal 1 dan due tanggal 4 →
+    dari `start_date` sampai `due_date` × 100%, dihitung dengan **hari
+    kalender** (akhir pekan ikut). Catatan: ini tidak lagi sama dengan
+    pembagian jam beban, yang kini memakai hari kerja. Start tanggal 1 dan due
+    tanggal 4 →
     25% / 50% / 75% / 100% pada tanggal 1 / 2 / 3 / 4. Sebelum start 0%,
     setelah due 100%.
   - **Lewat deadline**: due date sudah lewat dan tugas belum selesai.

@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, date as date_cls
+from functools import lru_cache
 
 from serializers import member_row_to_dict
 
@@ -72,34 +73,72 @@ def count_days(start, end):
     return sum(1 for _ in daterange(start, end))
 
 
-def count_workdays(start, end):
+def _weekday_count(start, end):
+    """Number of Monday-Friday days in [start, end], without looping."""
     if end < start:
         return 0
-    return sum(1 for day in daterange(start, end) if day.weekday() < 5)
+    total = (end - start).days + 1
+    weeks, rest = divmod(total, 7)
+    first_loose_day = start + timedelta(days=weeks * 7)
+    return weeks * 5 + sum(
+        1 for i in range(rest) if (first_loose_day + timedelta(days=i)).weekday() < 5
+    )
+
+
+def count_workdays(start, end):
+    return _weekday_count(start, end)
+
+
+@lru_cache(maxsize=8192)
+def task_work_plan(start, due):
+    """The days a task's estimate is spread over: (number_of_days, weekend_dates).
+
+    The hours are shared evenly over the working days (Monday-Friday) between
+    start and due. Weekends stay empty (the person is idle), except when the
+    task is due on a Saturday or Sunday: then the weekend the due date falls in
+    takes part, i.e. the due day itself, plus the Saturday before a Sunday due
+    date when the task has already started by then. Earlier weekends inside a
+    long task never count, so a task spanning several weeks and due on a Sunday
+    is not worked every weekend.
+
+    `start` and `due` are the normalised span (see task_span)."""
+    weekend = set()
+    if due.weekday() >= 5:
+        weekend.add(due)
+        saturday = due - timedelta(days=1)
+        if due.weekday() == 6 and saturday >= start:
+            weekend.add(saturday)
+    return _weekday_count(start, due) + len(weekend), frozenset(weekend)
+
+
+def task_works_on_weekend_day(task, day):
+    """True when `day` is a Saturday/Sunday the task's hours are spread onto."""
+    span = task_span(task)
+    if span is None:
+        return False
+    start, due = span
+    if not (start <= day <= due):
+        return False
+    return day in task_work_plan(start, due)[1]
 
 
 def count_capacity_days(start, end, tasks=(), force_workday=False):
+    """Days of capacity in [start, end]: the working days (Monday-Friday), plus
+    each Saturday/Sunday on which at least one of `tasks` has hours scheduled
+    (a task due on that weekend, see task_work_plan). Tying the weekend days to
+    the hours that actually land on them keeps load and capacity consistent:
+    hours on a weekend are never measured against zero capacity, and a weekend
+    nobody works stays out of the count (the person is idle that day)."""
     if force_workday:
         # A specific date was explicitly chosen (e.g. a "day" period on a
-        # Sat/Sun) — treat it as a full working day instead of skipping it.
+        # Sat/Sun) - treat it as a full working day instead of skipping it.
         return count_days(start, end)
-    overtime_dates = set()
-    for task in tasks:
-        if (task.get("status") or "").lower() == "done":
-            continue
-        due = parse_date(task.get("due_date"))
-        if due is None or due.weekday() < 5:
-            continue
-        task_start = parse_date(task.get("start_date")) or due
-        if due < task_start:
-            task_start = due
-        overtime_start = max(start, task_start)
-        overtime_end = min(end, due)
-        overtime_dates.update(
-            day for day in daterange(overtime_start, overtime_end)
-            if day.weekday() >= 5
-        )
-    return count_workdays(start, end) + len(overtime_dates)
+    weekend_days = sum(
+        1
+        for day in daterange(start, end)
+        if day.weekday() >= 5 and any(daily_hours_for_task(task, day) > 0 for task in tasks)
+    )
+    return count_workdays(start, end) + weekend_days
 
 
 def task_row_to_dict(row):
@@ -145,8 +184,12 @@ def daily_hours_for_task(task, day):
         due = start
     if not (start <= day <= due):
         return 0.0
-    task_days = count_days(start, due)
+    # Only the days the task is worked on carry hours: working days, plus the
+    # due weekend when the task is due on a Saturday/Sunday (task_work_plan).
+    task_days, weekend_dates = task_work_plan(start, due)
     if task_days == 0:
+        return 0.0
+    if day.weekday() >= 5 and day not in weekend_dates:
         return 0.0
     return task["estimated_hours"] / task_days
 
@@ -172,10 +215,12 @@ def task_contribution(task, start, end):
 
     Uses daily_hours_for_task, the same rule compute_daily_load (and so the
     workload card's "jam terpakai") is built on, so the numbers always add
-    up to the card. The estimate is spread evenly over every calendar day
-    from start to due (weekends included); a task whose deadline is longer
-    than the window therefore contributes only its share of the days that
-    fall inside it. Returns None when the task doesn't touch the window.
+    up to the card. The estimate is spread evenly over the task's working days
+    (Monday-Friday between start and due, plus the due weekend when the task is
+    due on a Saturday/Sunday, see task_work_plan); a task whose deadline is
+    longer than the window therefore contributes only its share of the working
+    days that fall inside it. Returns None when none of the task's working days
+    fall in the window.
     """
     span = task_span(task)
     if span is None:
@@ -185,8 +230,14 @@ def task_contribution(task, start, end):
         return None
 
     estimated = float(task.get("estimated_hours") or 0.0)
-    span_days = count_days(span_start, span_due)
-    overlap = list(daterange(max(start, span_start), min(end, span_due)))
+    work_days, weekend_dates = task_work_plan(span_start, span_due)
+    # The days of this window the estimate is spread over.
+    overlap = [
+        day for day in daterange(max(start, span_start), min(end, span_due))
+        if day.weekday() < 5 or day in weekend_dates
+    ]
+    if not overlap:
+        return None
     per_day = {
         day.isoformat(): daily_hours_for_task(task, day)
         for day in overlap
@@ -198,15 +249,18 @@ def task_contribution(task, start, end):
     return {
         "span_start": span_start.isoformat(),
         "span_due": span_due.isoformat(),
-        "span_days": span_days,
-        "hours_per_day": estimated / span_days if span_days else 0.0,
+        # number of days the estimate is shared over (working days + due weekend)
+        "span_days": work_days,
+        "calendar_days": count_days(span_start, span_due),
+        "weekend_days_in_span": len(weekend_dates),
+        "hours_per_day": estimated / work_days if work_days else 0.0,
         "days_in_window": len(counted_days),
         "weekend_days_in_window": sum(1 for d in counted_days if d.weekday() >= 5),
         "hours_in_window": hours,
         "hours_outside_window": max(estimated - hours, 0.0),
-        # True when the deadline reaches beyond this window (or starts before
-        # it), i.e. only part of the estimate is counted here.
-        "prorated": span_start < start or span_due > end,
+        # True when some of the task's working days lie outside this window,
+        # i.e. only part of the estimate is counted here.
+        "prorated": len(overlap) < work_days,
         "done_cutoff": is_done and len(counted_days) < len(overlap),
         "per_day": {k: round(v, 4) for k, v in per_day.items() if v},
     }
@@ -369,9 +423,7 @@ def allocate_tasks_in_window(db, member_id, start, end, exclude_done=False, forc
             task for task in tasks
             if is_weekend
             and (task.get("status") or "").lower() != "done"
-            and (task_due := parse_date(task.get("due_date"))) is not None
-            and task_due.weekday() >= 5
-            and (task_start := parse_date(task.get("start_date")) or start) <= day <= task_due
+            and task_works_on_weekend_day(task, day)
         ]
         if is_weekend and not weekend_due_tasks:
             allocations[day_key] = {}
@@ -387,8 +439,7 @@ def allocate_tasks_in_window(db, member_id, start, end, exclude_done=False, forc
             task_due = parse_date(task.get("due_date")) or end
             if is_weekend and (
                 (task.get("status") or "").lower() == "done"
-                or task_due.weekday() < 5
-                or not (task_start <= day <= task_due)
+                or not task_works_on_weekend_day(task, day)
             ):
                 continue
             if not (task_start <= day <= task_due):
@@ -477,12 +528,16 @@ def compute_member_workload(db, member, period, ref_date):
     total_hours = sum(
         compute_daily_load(db, member["id"], day) for day in daterange(start, end)
     )
-    active_tasks = db.execute(
-        "SELECT * FROM tasks WHERE assignee_id = ? AND status != 'done'",
+    # All tasks, finished ones included: a task done earlier this week still
+    # carries its hours on the days it was worked (daily_hours_for_task only
+    # stops counting a done task after today), so a weekend it was due on must
+    # also count as capacity or its hours would sit on a day with none.
+    member_tasks = db.execute(
+        "SELECT * FROM tasks WHERE assignee_id = ?",
         (member["id"],),
     ).fetchall()
     capacity = member["capacity_hours_per_day"] * count_capacity_days(
-        start, end, [task_row_to_dict(task) for task in active_tasks],
+        start, end, [task_row_to_dict(task) for task in member_tasks],
         force_workday=(period == "day"),
     )
     if capacity:
@@ -527,8 +582,12 @@ def suggest_for_overload(db, member, period, ref_date):
     total_hours = sum(
         compute_daily_load(db, member["id"], day) for day in daterange(start, end)
     )
+    all_member_tasks = [
+        task_row_to_dict(row)
+        for row in db.execute("SELECT * FROM tasks WHERE assignee_id = ?", (member["id"],)).fetchall()
+    ]
     capacity = member["capacity_hours_per_day"] * count_capacity_days(
-        start, end, tasks, force_workday=(period == "day")
+        start, end, all_member_tasks, force_workday=(period == "day")
     )
     remaining_excess = total_hours - capacity
     if remaining_excess <= 0:

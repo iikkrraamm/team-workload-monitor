@@ -14,6 +14,7 @@ from workload import (
     suggest_for_overload,
     task_contribution,
     task_row_to_dict,
+    task_works_on_weekend_day,
 )
 
 
@@ -94,7 +95,10 @@ def get_workload_details():
             "due_date": task.get("due_date"),
             "span_start": contribution["span_start"],
             "span_due": contribution["span_due"],
+            # days the estimate is shared over (working days + the due weekend)
             "span_days": contribution["span_days"],
+            "calendar_days": contribution["calendar_days"],
+            "weekend_days_in_span": contribution["weekend_days_in_span"],
             "hours_per_day": round(contribution["hours_per_day"], 4),
             "days_in_window": contribution["days_in_window"],
             "weekend_days_in_window": contribution["weekend_days_in_window"],
@@ -184,13 +188,22 @@ def get_dashboard():
         daily = compute_member_workload(db, member, "day", ref_date)
         weekly = compute_member_workload(db, member, "week", ref_date)
         in_progress_tasks = db.execute(
-            """SELECT title FROM tasks
+            """SELECT * FROM tasks
                WHERE assignee_id = ? AND status = 'in_progress'
                AND (start_date IS NULL OR start_date <= ?)
                AND (due_date IS NULL OR due_date >= ?)
                ORDER BY due_date, title""",
             (member["id"], ref_date.isoformat(), ref_date.isoformat()),
         ).fetchall()
+        # On a Saturday/Sunday only list a task that is actually worked that day
+        # (it is due that weekend). Otherwise a member shown as idle would still
+        # read "sedang dikerjakan: ...", because the task's date range merely
+        # spans the weekend while its hours sit on the working days.
+        if ref_date.weekday() >= 5:
+            in_progress_tasks = [
+                task for task in in_progress_tasks
+                if task_works_on_weekend_day(task_row_to_dict(task), ref_date)
+            ]
         status_counts[daily["status"]] += 1
         member_cards.append({
             "member": member_row_to_dict(member),
