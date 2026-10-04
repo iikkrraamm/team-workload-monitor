@@ -95,4 +95,28 @@ export const api = {
     request("/ai-chat", { method: "POST", body: { message, history } }),
   confirmChat: (token, confirmed) =>
     request("/ai-chat/confirm", { method: "POST", body: { token, confirmed } }),
+
+  // WhatsApp
+  getFeatures: () => request("/features"),
+  getWhatsAppGroups: () => request("/whatsapp/groups"),
+  sendWhatsAppMessage: async (to, type, body, file) => {
+    const payload = new FormData();
+    payload.append("to", to);
+    payload.append("type", type);
+    payload.append("body", body);
+    if (file) payload.append("media", file);
+
+    const response = await fetch(buildUrl("/whatsapp/send"), {
+      method: "POST",
+      body: payload,
+    });
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      const message = typeof errorBody.error === "string"
+        ? errorBody.error
+        : errorBody.error?.message;
+      throw new Error(message || `Request failed (${response.status})`);
+    }
+    return response.json();
+  },
 };
