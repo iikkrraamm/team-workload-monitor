@@ -40,7 +40,7 @@ def run_schedule(schedule_id):
         if not isinstance(reply, str) or not reply.strip():
             return {"success": False, "error": "AI tidak menghasilkan pesan untuk dikirim", "status_code": 502}
 
-        sent = send_whatsapp_message(recipient, body=reply.strip())
+        # sent = send_whatsapp_message(recipient, body=reply.strip())
     except AIError as exc:
         return {"success": False, "error": str(exc), "status_code": 502}
     except WhatsAppError as exc:
@@ -49,6 +49,7 @@ def run_schedule(schedule_id):
     return {
         "success": True,
         "schedule_id": schedule["id"],
-        "message_id": (sent.get("message") or {}).get("id"),
+        # "message_id": (sent.get("message") or {}).get("id"),
         "reply": reply.strip(),
+        "recipient": recipient,
     }
