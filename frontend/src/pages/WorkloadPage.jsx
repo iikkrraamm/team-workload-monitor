@@ -200,7 +200,7 @@ export default function WorkloadPage({ members }) {
                 <div className="min-w-0">
                   <div className="text-[14px] font-medium text-ink">{b.member_name}</div>
                   <div className="text-[12px] text-ink-soft">
-                    {b.overload_days} dari {b.lookback_days} hari overload · streak {b.current_streak} hari
+                    {b.overload_days} dari {b.lookback_days} hari overload/lembur · streak {b.current_streak} hari
                   </div>
                 </div>
                 <span
