@@ -10,24 +10,31 @@ overload, deteksi burnout, dan asisten chat AI untuk CRUD tugas secara cepat.
    tanggal, kapasitas tersedia, status jadwal, estimasi, sisa hari kerja, risiko).
    List punya filter **status** tambahan (hanya di mode List).
 2. **Workload harian, mingguan, bulanan** — dihitung dari estimasi jam tugas yang
-   disebar merata di sepanjang rentang tanggalnya, dibandingkan kapasitas jam/hari
-   tiap anggota.
+   disebar merata ke hari kerja (Senin–Jumat) dalam rentang tanggalnya,
+   dibandingkan kapasitas jam/hari tiap anggota. Sabtu/Minggu idle kecuali ada
+   tugas yang due-nya jatuh di akhir pekan.
 3. **Deteksi overload + saran pintar** — saat beban seseorang di atas 100% kapasitas,
    sistem menyarankan *reschedule* (tugas prioritas rendah digeser) atau
    *reassign* ke rekan tim yang masih longgar, mempertimbangkan prioritas tugas.
-4. **Deteksi burnout** — melihat 14 hari terakhir (sampai hari ini). Sebuah hari
-   dihitung overload jika bebannya di atas 100% kapasitas harian. Risiko
-   **tinggi** jika overload beruntun (`streak`, dihitung mundur dari hari ini)
-   ≥5 hari **atau** ≥10 dari 14 hari overload; risiko **sedang** jika streak ≥3
-   hari **atau** ≥6 dari 14 hari. Dashboard hanya menampilkan peringatan untuk
-   risiko **tinggi** (risiko sedang tetap dihitung dan tersedia di
-   `/api/burnout`), dengan saran mengambil cuti/istirahat.
-   Tugas berkategori **Cuti/Libur** tidak dihitung sebagai beban di sini, jadi
-   orang yang sedang cuti tidak ikut ditandai. (Persentase beban di dashboard dan
-   Analisis Beban tetap menghitung semua tugas.) Catatan: hari cuti memutus
-   streak, tetapi hari overload sebelumnya tetap masuk hitungan 14 hari. Jadi
-   anggota yang cuti setelah ≥10 hari overload masih bisa muncul (risiko tinggi
-   lewat syarat 10 dari 14 hari) sampai hari-hari overload itu keluar dari jendela.
+4. **Deteksi burnout** — melihat 14 hari terakhir (sampai hari ini). Tiap hari
+   punya status: **overload** (hari kerja di atas 100% kapasitas), **normal**
+   (hari kerja ≤100%, memutus streak), **lembur** (Sabtu/Minggu yang punya jam
+   kerja, **berapa pun jumlah jamnya**; ini menambah streak karena hari
+   istirahat dipakai bekerja), dan **libur** (Sabtu/Minggu tanpa jam; dilewati,
+   tidak memutus dan tidak menambah). `streak` adalah rangkaian hari
+   overload/lembur yang berakhir hari ini, melangkahi akhir pekan yang idle;
+   `overload_days` menghitung hari overload dan lembur, jadi streak tidak
+   pernah lebih besar darinya. Contoh: Senin–Jumat overload, akhir pekan idle,
+   lalu Senin–Rabu overload = streak 8; Sabtu 1 jam kerja di antaranya
+   menambah 1 poin. Risiko **tinggi** jika streak ≥5 **atau** ≥10 dari 14 hari;
+   **sedang** jika streak ≥3 **atau** ≥6 dari 14 hari. Hari kerja yang tidak
+   overload (termasuk hari cuti) memutus streak. Dashboard hanya menampilkan
+   peringatan untuk risiko **tinggi** (risiko sedang tetap dihitung dan tersedia
+   di `/api/burnout`, bersama `state` tiap hari), dengan saran mengambil
+   cuti/istirahat. Tugas berkategori **Cuti/Libur** tidak dihitung sebagai beban
+   di sini, jadi orang yang sedang cuti tidak ikut ditandai, dan akhir pekan
+   yang hanya berisi tugas cuti dianggap libur. (Persentase beban di dashboard
+   dan Analisis Beban tetap menghitung semua tugas.)
 5. **Klasifikasi status** — Idle (0 jam), Low (<30%), Normal (30–80%),
    Padat (>80–100%), Overload (>100%) — tampil di dashboard per anggota.
 6. **CRUD super cepat** — quick-add satu baris di halaman Tugas, drag status
@@ -144,20 +151,31 @@ frontend/
 ## Cara Kerja Kalkulasi Workload (ringkas)
 
 - Setiap tugas punya `estimated_hours`, `start_date`, `due_date`. Jam tugas
-  disebar merata per hari dalam rentang tersebut.
+  disebar merata ke **hari kerja (Senin–Jumat)** dalam rentang tersebut. Tugas
+  Senin–Jumat 40 jam = 8 jam per hari kerja; tugas Jumat→Senin 8 jam = 4 jam
+  Jumat + 4 jam Senin. Sabtu/Minggu tidak menerima jam (beban turun dan status
+  menjadi Idle), **kecuali** tugas itu due di Sabtu/Minggu: maka akhir pekan
+  tempat due date itu berada ikut dibagi (hari due itu sendiri, ditambah Sabtu
+  sebelum due Minggu bila tugas sudah mulai). Akhir pekan lain di tengah tugas
+  yang panjang tidak ikut. Kapasitas diselaraskan: hari akhir pekan dihitung
+  sebagai hari kapasitas hanya bila ada tugas yang menaruh jam di hari itu
+  (tugas selesai tetap dihitung untuk hari-hari yang sudah lewat), sehingga jam
+  tidak pernah dibandingkan dengan kapasitas nol dan satu tugas Minggu saja
+  menambah 1 hari (6 hari kapasitas), bukan 7. Aturan ini sama dengan alokasi di
+  kartu tugas (risiko tidak cukup jam).
 - Workload periode = total jam tugas aktif dalam periode ÷ (kapasitas jam/hari
   anggota × jumlah hari periode) × 100%.
 - **Rincian kontribusi** (tombol di halaman Analisis Beban) menjumlah persis ke
   angka "jam terpakai" pada kartu, karena memakai aturan hitung yang sama:
-  estimasi tiap tugas dibagi rata ke semua hari kalender dari `start_date`
-  sampai `due_date` (akhir pekan ikut dihitung), lalu hanya hari yang masuk
-  periode yang dijumlahkan, ditambah jam aktivitas. Untuk tugas dengan deadline
-  lebih panjang dari periode, rincian menampilkan estimasi, jumlah hari
-  pembagi, jam per hari, jumlah hari di periode, dan sisa jam di luar periode.
-  Tugas cuti dan tugas selesai tampil dengan penanda; tugas selesai hanya
-  dihitung sampai hari ini. Hari akhir pekan menambah jam terpakai bila ada
-  tugas yang rentangnya melewatinya, tetapi kapasitas hanya menghitung hari
-  kerja (kecuali ada tugas yang deadline-nya jatuh di akhir pekan).
+  estimasi tiap tugas dibagi rata ke hari kerjanya dari `start_date` sampai
+  `due_date` (aturan di atas), lalu hanya hari yang masuk periode yang
+  dijumlahkan, ditambah jam aktivitas. Untuk tugas dengan deadline lebih panjang
+  dari periode, rincian menampilkan estimasi, jumlah hari kerja pembagi, jam per
+  hari, jumlah hari di periode, dan sisa jam di luar periode. Tugas cuti dan
+  tugas selesai tampil dengan penanda; tugas selesai hanya dihitung sampai hari
+  ini. Daftar "Sedang dikerjakan" di dashboard pada hari Sabtu/Minggu hanya
+  menampilkan tugas yang memang dikerjakan di akhir pekan itu, supaya tidak
+  bertentangan dengan status Idle.
 - Saran overload (halaman Analisis Beban) memprioritaskan tugas dengan prioritas
   terendah untuk dipindah lebih dulu. Hanya tugas kerja yang belum selesai yang
   bisa disarankan: tugas **Cuti/Libur** dan tugas **selesai** tidak pernah masuk
@@ -187,16 +205,20 @@ frontend/
   index lalu mengurutkan seluruh hasil; pada ribuan tugas selisihnya tak terasa.
 - **Status jadwal tugas** (Kanban dan List, hanya tugas `todo` / `in_progress`;
   tugas selesai dan cuti tidak dinilai):
-  - *Seharusnya* (should-be progress) = hari yang sudah berjalan ÷ jumlah hari
-    dari `start_date` sampai `due_date` × 100%, dengan hari kalender (akhir
-    pekan ikut) seperti pembagian jam. Start tanggal 1 dan due tanggal 4 →
-    25% / 50% / 75% / 100% pada tanggal 1 / 2 / 3 / 4. Sebelum start 0%,
-    setelah due 100%.
+  - *Seharusnya* (should-be progress) = jam kumulatif yang direncanakan ÷
+    estimasi, yaitu hari kerja yang sudah berlalu ÷ jumlah hari kerja tugas × 100%.
+    Memakai **rencana yang sama persis dengan pembagian jam** (hari kerja
+    Senin–Jumat, plus akhir pekan tempat due bila tugas due di Sabtu/Minggu),
+    sehingga selalu selaras. Empat hari kerja berturut-turut (mis. Senin–Kamis)
+    → 25% / 50% / 75% / 100%. Progres diam selama akhir pekan yang tidak
+    dikerjakan: tugas Jumat→Senin 8 jam = 50% di Jumat, Sabtu, dan Minggu, 100%
+    di Senin. Sebelum start 0%, dari due date 100%.
   - **Lewat deadline**: due date sudah lewat dan tugas belum selesai.
-  - **Terlambat**: masih `todo` padahal hari mulainya sudah lewat (hari
-    pertama berlalu tanpa dimulai).
-  - **On track**: selain itu (sedang dikerjakan, atau `todo` yang baru akan
-    atau baru mulai hari ini).
+  - **Terlambat**: masih `todo` padahal sedikitnya satu hari kerja tugas itu
+    sudah lewat tanpa dimulai. Akhir pekan yang tidak membawa jam tidak dihitung
+    sebagai hari yang lewat (tugas yang start Sabtu tidak terlambat di Minggu).
+  - **On track**: selain itu (sedang dikerjakan, atau `todo` sebelum atau pada
+    hari kerja pertamanya).
   - Belum ada data progres aktual (persen selesai), jadi penilaiannya memakai
     status dan tanggal saja; tugas `in_progress` baru dinilai terlambat setelah
     lewat deadline.
