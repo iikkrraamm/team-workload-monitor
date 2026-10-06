@@ -1,4 +1,4 @@
-import { LayoutGrid, KanbanSquare, Activity, Clock3, Users, Database, MessageCircle } from "lucide-react";
+import { LayoutGrid, KanbanSquare, Activity, Clock3, Users, Database, MessageCircle, SlidersHorizontal } from "lucide-react";
 
 // `primary: true` = gets its own icon in the mobile bottom tab bar.
 // Mobile bottom bars max out at ~5 slots before labels start colliding
@@ -19,4 +19,5 @@ export const NAV_ITEMS = [
   { id: "team", label: "Tim", icon: Users },
   { id: "whatsapp", label: "WhatsApp", icon: MessageCircle },
   { id: "sql", label: "SQL Client", shortLabel: "SQL", icon: Database },
+  { id: "settings", label: "Pengaturan", icon: SlidersHorizontal },
 ];

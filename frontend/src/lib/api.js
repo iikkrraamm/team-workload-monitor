@@ -64,6 +64,11 @@ export const api = {
   getWorkloadDetails: (member_id, period, date) =>
     request("/workload/details", { query: { member_id, period, date } }),
 
+  // Settings (thresholds that decide Low / Normal / Padat / Overload)
+  getThresholds: () => request("/settings/thresholds"),
+  updateThresholds: (values) => request("/settings/thresholds", { method: "PUT", body: values }),
+  resetThresholds: () => request("/settings/thresholds", { method: "DELETE" }),
+
   // SQL client
   getSqlSchema: () => request("/sql/schema"),
   executeSql: (sql) => request("/sql/execute", { method: "POST", body: { sql } }),
