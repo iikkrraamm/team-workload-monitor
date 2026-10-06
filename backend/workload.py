@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, date as date_cls
 from functools import lru_cache
 
 from serializers import member_row_to_dict
+from settings import DEFAULT_THRESHOLDS, get_thresholds
 
 PRIORITY_WEIGHT = {"low": 1, "medium": 2, "high": 3, "urgent": 4}
 # Task categories that mean time off rather than work. They must not count as
@@ -41,9 +42,9 @@ def is_exempt_from_deadline_risk(task):
     and listed; it doesn't change how much capacity it uses up."""
     status = (task.get("status") or "").strip().lower()
     return status == "done" or is_leave_task(task)
-LOW_MAX = 30
-NORMAL_MAX = 80
-PADAT_MAX = 100
+# The status thresholds (low / normal / overload boundaries) are not constants:
+# they live in the app_settings table and are read with settings.get_thresholds,
+# so they can be changed from the Pengaturan page without touching the code.
 STATUS_LABEL_ID = {
     "idle": "Idle",
     "low": "Low",
@@ -494,14 +495,20 @@ def allocate_tasks_in_window(db, member_id, start, end, exclude_done=False, forc
     return {"allocations": allocations, "activities": activities_by_day, "tasks": tasks}
 
 
-def classify_workload(percent, total_hours):
+def classify_workload(percent, total_hours, thresholds=None):
+    """Status of a load, from the configured thresholds (settings.py):
+    idle with no hours; low below low_max; normal up to and including
+    normal_max; padat below overload_from; overload from overload_from on.
+    `percent` should be the figure that is shown (rounded to 1 decimal), so
+    what a screen displays and what it is classified as never disagree."""
+    t = thresholds or DEFAULT_THRESHOLDS
     if total_hours == 0:
         return "idle"
-    if percent < LOW_MAX:
+    if percent < t["low_max"]:
         return "low"
-    if percent <= NORMAL_MAX:
+    if percent <= t["normal_max"]:
         return "normal"
-    if percent <= PADAT_MAX:
+    if percent < t["overload_from"]:
         return "padat"
     return "overload"
 
@@ -564,9 +571,8 @@ def compute_member_workload(db, member, period, ref_date):
         force_workday=(period == "day"),
     )
     if capacity:
-        raw_percent = (total_hours / capacity) * 100
-        percent = round(raw_percent, 1)
-        status = classify_workload(raw_percent, total_hours)
+        percent = round((total_hours / capacity) * 100, 1)
+        status = classify_workload(percent, total_hours, get_thresholds(db))
     else:
         percent = None if total_hours else 0
         status = "overload" if total_hours else "idle"
@@ -719,8 +725,9 @@ def compute_burnout_risk(db, member, ref_date, lookback_days=14):
     """Burnout risk from the last `lookback_days` days.
 
     Each day gets a state:
-    * overload: a working day above 100% of capacity.
-    * normal:   a working day at or below 100%. It breaks the streak.
+    * overload: a working day whose load is "overload" under the configured
+                threshold (110% of capacity by default).
+    * normal:   any other working day. It breaks the streak.
     * overtime: a Saturday/Sunday with any hours scheduled, however few. Working
                 a rest day counts as overload, so it adds to the streak.
     * rest:     a Saturday/Sunday with no hours (the person is idle). It is
@@ -732,6 +739,7 @@ def compute_burnout_risk(db, member, ref_date, lookback_days=14):
     """
     daily_percents = []
     capacity = member["capacity_hours_per_day"]
+    thresholds = get_thresholds(db)
     for offset in range(lookback_days - 1, -1, -1):
         day = ref_date - timedelta(days=offset)
         hours = compute_daily_load(
@@ -741,7 +749,7 @@ def compute_burnout_risk(db, member, ref_date, lookback_days=14):
         if day.weekday() >= 5:
             state = "overtime" if hours > 0 else "rest"
         else:
-            state = "overload" if percent > PADAT_MAX else "normal"
+            state = "overload" if classify_workload(percent, hours, thresholds) == "overload" else "normal"
         daily_percents.append({"date": day.isoformat(), "percent": percent, "state": state})
 
     overload_days = sum(1 for item in daily_percents if item["state"] in ("overload", "overtime"))

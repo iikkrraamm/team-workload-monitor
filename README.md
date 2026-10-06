@@ -13,12 +13,13 @@ overload, deteksi burnout, dan asisten chat AI untuk CRUD tugas secara cepat.
    disebar merata ke hari kerja (Senin–Jumat) dalam rentang tanggalnya,
    dibandingkan kapasitas jam/hari tiap anggota. Sabtu/Minggu idle kecuali ada
    tugas yang due-nya jatuh di akhir pekan.
-3. **Deteksi overload + saran pintar** — saat beban seseorang di atas 100% kapasitas,
+3. **Deteksi overload + saran pintar** — saat status seseorang Overload (bawaan: beban
+   ≥110% kapasitas, bisa diatur di menu Pengaturan),
    sistem menyarankan *reschedule* (tugas prioritas rendah digeser) atau
    *reassign* ke rekan tim yang masih longgar, mempertimbangkan prioritas tugas.
 4. **Deteksi burnout** — melihat 14 hari terakhir (sampai hari ini). Tiap hari
-   punya status: **overload** (hari kerja di atas 100% kapasitas), **normal**
-   (hari kerja ≤100%, memutus streak), **lembur** (Sabtu/Minggu yang punya jam
+   punya status: **overload** (hari kerja berstatus Overload, bawaan ≥110%
+   kapasitas), **normal** (hari kerja lainnya, memutus streak), **lembur** (Sabtu/Minggu yang punya jam
    kerja, **berapa pun jumlah jamnya**; ini menambah streak karena hari
    istirahat dipakai bekerja), dan **libur** (Sabtu/Minggu tanpa jam; dilewati,
    tidak memutus dan tidak menambah). `streak` adalah rangkaian hari
@@ -36,7 +37,9 @@ overload, deteksi burnout, dan asisten chat AI untuk CRUD tugas secara cepat.
    yang hanya berisi tugas cuti dianggap libur. (Persentase beban di dashboard
    dan Analisis Beban tetap menghitung semua tugas.)
 5. **Klasifikasi status** — Idle (0 jam), Low (<30%), Normal (30–80%),
-   Padat (>80–100%), Overload (>100%) — tampil di dashboard per anggota.
+   Padat (>80% sampai <110%), Overload (≥110%) — tampil di dashboard per anggota.
+   Tiga batas (Low, Normal, Overload) adalah **pengaturan**, bukan konstanta kode:
+   lihat butir 9.
 6. **CRUD super cepat** — quick-add satu baris di halaman Tugas, drag status
    lewat tombol pada kartu, dan **chat AI** di pojok kanan bawah untuk perintah
    bahasa natural, misalnya:
@@ -80,6 +83,25 @@ overload, deteksi burnout, dan asisten chat AI untuk CRUD tugas secara cepat.
    berganti tema. `bg-accent-solid` untuk isian biru di bawah teks putih (tombol,
    bubble chat). Warna di dalam chart Recharts diatur di `CHART_THEME`
    (`WorkloadPage.jsx`), karena atribut SVG tidak bisa membaca CSS variable.
+
+9. **Pengaturan ambang beban** — menu *Pengaturan* (di HP: Lainnya → Pengaturan)
+   untuk mengubah batas status tanpa mengubah kode atau me-restart server:
+   - *Low: di bawah* (bawaan 30%): beban di bawah angka ini berstatus Low.
+   - *Normal: sampai* (bawaan 80%): dari batas Low sampai angka ini (termasuk) Normal.
+   - *Overload: mulai dari* (bawaan 110%): beban ≥ angka ini berstatus Overload;
+     di antara batas Normal dan angka ini adalah Padat.
+
+   Halaman memberi pratinjau pita status secara langsung beserta padanan jamnya
+   (untuk kapasitas 8 jam/hari), memvalidasi isian (angka, > 0, ≤ 1000%, dan
+   Low < Normal < Overload), dan punya tombol "Kembalikan ke bawaan". Batas yang
+   sama dipakai di dashboard, Analisis Beban, saran overload, dan peringatan
+   burnout (hari kerja dihitung overload bila statusnya Overload); persen yang
+   tampil adalah persen yang diklasifikasikan (dibulatkan 1 desimal). Idle selalu
+   berarti 0 jam. Nilai disimpan di tabel `app_settings` (dibuat otomatis) dan
+   berlaku untuk semua pengguna, karena aplikasi belum punya login. Nilai yang
+   rusak, tidak konsisten, atau tabel yang belum ada otomatis jatuh ke bawaan.
+   API: `GET /api/settings/thresholds`, `PUT` (boleh sebagian; kolom yang tidak
+   dikirim tetap), dan `DELETE` (kembali ke bawaan).
 
 ## Menjalankan Backend
 

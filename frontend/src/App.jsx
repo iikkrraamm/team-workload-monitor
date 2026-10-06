@@ -11,6 +11,7 @@ import TeamPage from "./pages/TeamPage";
 import ActivitiesPage from "./pages/ActivitiesPage";
 import SqlPage from "./pages/SqlPage";
 import WhatsAppPage from "./pages/WhatsAppPage";
+import SettingsPage from "./pages/SettingsPage";
 
 export default function App() {
   const [page, setPage] = useState("dashboard");
@@ -51,6 +52,7 @@ export default function App() {
           {page === "team" && <TeamPage members={members} reload={loadMembers} />}
           {page === "activities" && <ActivitiesPage members={members} />}
           {whatsappEnabled && page === "whatsapp" && <WhatsAppPage />}
+          {page === "settings" && <SettingsPage />}
           {/* No key={refreshSignal}: remounting would wipe the editor. */}
           {page === "sql" && (
             <SqlPage
